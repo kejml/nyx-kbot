@@ -26,6 +26,10 @@ dependencies {
     implementation("io.ktor", "ktor-client-cio", ktorVersion)
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.3.2")
     implementation("org.jetbrains.kotlinx:kotlinx-datetime:0.3.2")
+    // AWS SDK
+    implementation(platform("software.amazon.awssdk:bom:2.17.133"))
+    implementation("software.amazon.awssdk:dynamodb")
+
     testImplementation(kotlin("test"))
 }
 
@@ -51,6 +55,7 @@ kotless {
             allowDestroy = true
             files {
                 add(file("src/main/resources/secret.properties"))
+                add(file("src/main/tf/extensions.tf"))
             }
         }
     }
