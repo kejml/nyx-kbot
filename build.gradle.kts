@@ -1,12 +1,17 @@
+import io.kotless.plugin.gradle.dsl.kotless
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 
 plugins {
     kotlin("jvm") version "1.6.10"
+    kotlin("plugin.serialization") version "1.6.10" apply true
     id("io.kotless") version "0.2.0" apply true
 }
 
 group = "eu.kejml"
 version = "1.0-SNAPSHOT"
+
+val kotlessVersion by extra("0.2.0")
+val ktorVersion by extra("1.6.7")
 
 repositories {
     mavenCentral()
@@ -15,10 +20,41 @@ repositories {
 }
 
 dependencies {
-    implementation("io.kotless", "kotless-lang", "0.2.0")
-    implementation("io.kotless", "kotless-lang-aws", "0.2.0")
+    implementation("io.kotless", "kotless-lang", kotlessVersion)
+    implementation("io.kotless", "kotless-lang-aws", kotlessVersion)
+    implementation("io.ktor", "ktor-client-core", ktorVersion)
+    implementation("io.ktor", "ktor-client-cio", ktorVersion)
+    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.3.2")
     testImplementation(kotlin("test"))
 }
+
+kotless {
+    config {
+        aws {
+            storage {
+                bucket = "kbot.bucket"
+            }
+            profile = "kbot"
+            region = "eu-central-1"
+        }
+    }
+    webapp {
+        lambda {
+            kotless {
+                packages = setOf("eu.kejml.nyx.kbot.lambda")
+            }
+        }
+    }
+    extensions {
+        terraform {
+            allowDestroy = true
+            files {
+                add(file("src/main/resources/secret.properties"))
+            }
+        }
+    }
+}
+
 
 tasks.test {
     useJUnitPlatform()
