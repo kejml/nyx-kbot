@@ -25,6 +25,7 @@ dependencies {
     implementation("io.ktor", "ktor-client-core", ktorVersion)
     implementation("io.ktor", "ktor-client-cio", ktorVersion)
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.3.2")
+    implementation("org.jetbrains.kotlinx:kotlinx-datetime:0.3.2")
     testImplementation(kotlin("test"))
 }
 
