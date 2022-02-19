@@ -24,6 +24,6 @@ object Main {
     fun nyxTest(): String = runBlocking {
         val data = Nyx.getDiscussion("20310")
         val discussion = json.decodeFromString<Discussion>(data)
-        discussion.toString()
+        discussion.posts.filter { it.content.contains(Regex("<(b|strong)>bod</(b|strong)>", RegexOption.IGNORE_CASE)) }.toString()
     }
 }
