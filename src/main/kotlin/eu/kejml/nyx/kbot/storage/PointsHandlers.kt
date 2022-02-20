@@ -4,10 +4,14 @@ import eu.kejml.nyx.kbot.api.Discussion
 import eu.kejml.nyx.kbot.api.DiscussionQueryParams
 import eu.kejml.nyx.kbot.api.NyxClient
 import kotlinx.coroutines.runBlocking
-import kotlinx.datetime.LocalDateTime
+import kotlinx.datetime.*
+import kotlinx.datetime.TimeZone
 import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.json.Json
 import org.slf4j.LoggerFactory
+import java.time.format.TextStyle
+import java.util.*
+import kotlin.time.Duration.Companion.seconds
 
 private val log = LoggerFactory.getLogger("PointsHandlers")
 private val json = Json { ignoreUnknownKeys = true }
@@ -55,11 +59,35 @@ fun readPointsFromDiscussion(discussionId: Long): String = runBlocking {
     logMessage
 }
 
-fun postYearSummary(discussionId: Long, year: Int) {
+
+fun postYearlySummary(discussionId: Long, year: Int) {
+    postSummary(
+        discussionId,
+        "Vyhodnocení bodování za rok <b>$year</b>:",
+        LocalDateTime(year, 1, 1, 0, 0),
+        LocalDateTime(year, 12, 31, 23, 59, 59, 999),
+    )
+}
+
+fun postMonthlySummary(discussionId: Long, month: Month, year: Int) {
+    if (month == Month.DECEMBER) throw IllegalArgumentException("Send year summary in December!")
+
+    val monthString = month.getDisplayName(TextStyle.FULL_STANDALONE, Locale.forLanguageTag("cs"))
+
+    postSummary(
+        discussionId,
+        "Vyhodnocení bodování za měsíc <b>$monthString $year</b>:",
+        LocalDateTime(year, month, 1, 0, 0),
+        LocalDateTime(year, month + 1, 1, 0, 0)
+            .toInstant(TimeZone.UTC).minus(1.seconds).toLocalDateTime(TimeZone.UTC),
+    )
+}
+
+fun postSummary(discussionId: Long, intro: String, from: LocalDateTime, to: LocalDateTime) {
     val pointsToUser = Points.getPointsBetween(
         discussionId,
-        LocalDateTime(year, 1, 1, 0, 0),
-        LocalDateTime(year, 12, 31, 23, 59, 59, 999)
+        from,
+        to
     ).groupBy { it.givenTo }
         .map { it.key to it.value.size }
         .groupBy({it.second}) { it.first }
@@ -67,7 +95,7 @@ fun postYearSummary(discussionId: Long, year: Int) {
     val content = """
             <i>Testovací provoz!</i>
             
-            Vyhodnocení bodování za rok <b>$year</b>:
+            $intro
             
             <table style="width: 300px">
             <tr><th>Pořadí</th><th>ID</th><th>Počet bodů</th></tr>
@@ -81,7 +109,11 @@ fun postYearSummary(discussionId: Long, year: Int) {
             globalOrder += numberOfUsers
             resultLine
         }
-            .plus("</table>")
+            .plus("""
+                </table>
+                
+                <small><i>Veškeré stížnosti a jinou zpětnou vazbu směřujte prosím na ID KEJML</i></small>
+            """.trimIndent())
     )
     return runBlocking {
         NyxClient.postDiscussion(discussionId, content)
