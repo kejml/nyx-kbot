@@ -1,6 +1,6 @@
 package eu.kejml.nyx.kbot.api
 
-import eu.kejml.nyx.kbot.lambda.Main
+import io.ktor.client.*
 import io.ktor.client.request.*
 import io.ktor.client.request.forms.*
 import io.ktor.http.*
@@ -18,10 +18,10 @@ enum class PostFormat(val apiString: String) {
     HTML("html"),
 }
 
-class Params(
+class DiscussionQueryParams(
     private val text: String? = null,
     private val fromId: Long? = null,
-    val discussionOrder: DiscussionOrder = DiscussionOrder.NEWER_THAN
+    private val discussionOrder: DiscussionOrder = DiscussionOrder.NEWER_THAN
 ) {
     private fun isEmpty() = text == null && fromId == null
 
@@ -36,25 +36,16 @@ class Params(
     }
 }
 
-object Nyx {
-    val secretStream: InputStream? = this.javaClass.classLoader.getResourceAsStream("secret.properties")
-    val props = Properties().apply { load(secretStream) }
-    val nyxToken = props["nyx_token"]
+object NyxClient {
+    private val secretStream: InputStream? = this.javaClass.classLoader.getResourceAsStream("secret.properties")
+    private val props = Properties().apply { load(secretStream) }
+    private val nyxToken = props["nyx_token"]
+    private val client = HttpClient()
 
-    val log = LoggerFactory.getLogger(this.javaClass)
+    private val log = LoggerFactory.getLogger(this.javaClass)
 
-    suspend fun getDiscussion(id: Long, params: Params? = null): String {
+    suspend fun getDiscussion(id: Long, params: DiscussionQueryParams? = null): String {
         return nyxGet("discussion/$id${params?.toUrl() ?: ""}")
-    }
-
-    suspend fun nyxGet(endpoint: String): String {
-        val urlString = "https://nyx.cz/api/$endpoint"
-        log.info(urlString)
-        return Main.client.get(urlString) {
-            headers {
-                this.append("Authorization", "Bearer $nyxToken")
-            }
-        }
     }
 
     suspend fun postDiscussion(discussionId: Long, content: String, format: PostFormat = PostFormat.HTML): String {
@@ -64,10 +55,20 @@ object Nyx {
         ))
     }
 
-    suspend fun nyxPost(endpoint: String, content: Map<String, String>): String {
+    private suspend fun nyxGet(endpoint: String): String {
         val urlString = "https://nyx.cz/api/$endpoint"
         log.info(urlString)
-        return Main.client.post(urlString) {
+        return client.get(urlString) {
+            headers {
+                this.append("Authorization", "Bearer $nyxToken")
+            }
+        }
+    }
+
+    private suspend fun nyxPost(endpoint: String, content: Map<String, String>): String {
+        val urlString = "https://nyx.cz/api/$endpoint"
+        log.info(urlString)
+        return client.post(urlString) {
             headers {
                 this.append("Authorization", "Bearer $nyxToken")
             }

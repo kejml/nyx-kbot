@@ -1,5 +1,7 @@
 package eu.kejml.nyx.kbot.storage
 
+import io.kotless.PermissionLevel
+import io.kotless.dsl.cloud.aws.DynamoDBTable
 import kotlinx.datetime.LocalDateTime
 import kotlinx.datetime.toLocalDateTime
 import org.slf4j.LoggerFactory
@@ -31,11 +33,12 @@ fun fromAttributeValues(input: Map<String, AttributeValue>): Point {
     )
 }
 
+@DynamoDBTable(tableName, PermissionLevel.ReadWrite)
 object Points {
     private val client = DynamoDbClient.builder().build()
     private val log = LoggerFactory.getLogger(this.javaClass)
 
-    fun getLastPostId(discussionId: Long): Long? {
+    internal fun getLastPostId(discussionId: Long): Long? {
 
         val request = QueryRequest.builder()
             .tableName(tableName)
@@ -50,7 +53,7 @@ object Points {
         return client.query(request).items()?.let { item -> item.getOrNull(0)?.let { fromAttributeValues(it) }?.id }
     }
 
-    fun addPoint(point: Point) {
+    internal fun addPoint(point: Point) {
         val pointValues = HashMap<String, AttributeValue>()
 
         pointValues["discussionId"] = AttributeValue.builder().n(point.discussionId.toString()).build()
@@ -77,7 +80,7 @@ object Points {
         }
     }
 
-    fun getAPoint(id: Long): Point? {
+    internal fun getAPoint(id: Long): Point? {
         val keyToGet = HashMap<String, AttributeValue>()
 
         keyToGet["id"] = AttributeValue.builder()
@@ -88,21 +91,16 @@ object Points {
             .tableName(tableName)
             .build()
 
-        return try {
-            val returnedItem: Map<String, AttributeValue>? = client.getItem(request).item()
-            if (returnedItem != null && returnedItem.isNotEmpty()) {
-                fromAttributeValues(returnedItem)
-            } else {
-                System.out.format("No item found with the key %s!\n", id.toString())
-                null
-            }
-        } catch (e: DynamoDbException) {
-            System.err.println(e.message)
-            exitProcess(3)
+        val returnedItem: Map<String, AttributeValue>? = client.getItem(request).item()
+        return if (returnedItem != null && returnedItem.isNotEmpty()) {
+            fromAttributeValues(returnedItem)
+        } else {
+            System.out.format("No item found with the key %s!\n", id.toString())
+            null
         }
     }
 
-    fun getPointsBetween(discussionId: Long, from: LocalDateTime, to: LocalDateTime): List<Point> {
+    internal fun getPointsBetween(discussionId: Long, from: LocalDateTime, to: LocalDateTime): List<Point> {
         log.info("Getting points between $from and $to")
 
         val request = QueryRequest.builder()

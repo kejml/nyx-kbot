@@ -1,4 +1,4 @@
-package eu.kejml.nyx.kbot.data
+package eu.kejml.nyx.kbot.api
 
 import kotlinx.datetime.LocalDateTime
 import kotlinx.serialization.SerialName

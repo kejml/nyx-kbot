@@ -52,7 +52,6 @@ kotless {
     }
     extensions {
         terraform {
-            allowDestroy = true
             files {
                 add(file("src/main/resources/secret.properties"))
                 add(file("src/main/tf/extensions.tf"))
