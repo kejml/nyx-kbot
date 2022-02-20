@@ -56,11 +56,14 @@ fun readPointsFromDiscussion(discussionId: Long): String = runBlocking {
 }
 
 fun postYearSummary(discussionId: Long, year: Int) {
-    val userToPoints = Points.getPointsBetween(
+    val pointsToUser = Points.getPointsBetween(
         discussionId,
         LocalDateTime(year, 1, 1, 0, 0),
         LocalDateTime(year, 12, 31, 23, 59, 59, 999)
-    ).groupBy { it.givenTo }.map { it.key to it.value.size }.sortedByDescending { it.second }
+    ).groupBy { it.givenTo }
+        .map { it.key to it.value.size }
+        .groupBy({it.second}) { it.first }
+    var globalOrder = 1 // Good enough now
     val content = """
             <i>Testovací provoz!</i>
             
@@ -69,11 +72,21 @@ fun postYearSummary(discussionId: Long, year: Int) {
             <table style="width: 300px">
             <tr><th>Pořadí</th><th>ID</th><th>Počet bodů</th></tr>
         """.trimIndent().plus(
-        userToPoints.mapIndexed { index, pair -> "<tr><td>${index + 1}</td><td>${pair.first}</td><td>${pair.second}</td></tr>" }
-            .joinToString("\n")
+        pointsToUser.entries.joinToString("\n") { pair ->
+            val numberOfUsers = pair.value.size
+            val resultLine =
+                pair.value.sorted().joinToString("\n") { user ->
+                    "<tr><td>${determineOrder(numberOfUsers, globalOrder)}.</td><td>${user}</td><td>${pair.key}</td></tr>"
+            }
+            globalOrder += numberOfUsers
+            resultLine
+        }
             .plus("</table>")
     )
     return runBlocking {
         NyxClient.postDiscussion(discussionId, content)
     }
 }
+
+private fun determineOrder(numberOfUsers: Int, globalOrder: Int) =
+    if (numberOfUsers == 1) globalOrder else "$globalOrder.-${globalOrder + numberOfUsers - 1}"
