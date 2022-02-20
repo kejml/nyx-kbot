@@ -22,7 +22,8 @@ object Main {
     val log = LoggerFactory.getLogger(this.javaClass)
 
 
-    private val discussionId = 20310L
+    private val discussionId = 20310L // SANDBOX
+    //private val discussionId = 11354L // PROD
 
     @Get("/hello")
     fun root(): String {
@@ -49,13 +50,15 @@ object Main {
     // TODO more points in one post? Other text beside point
     private fun String.parsePointData(): Pair<Long, String> {
         //<a class=r data-id=54606485 data-discussion-id=20310 href='/discussion/20310/id/54606485'>DEVNOK</a>: <b>BOD</b>
-        val questionId = this.split(" ").first { it.startsWith("data-id") }.substringAfter("=").toLong()
+        //<a href="/discussion/11354/id/47179434" class="r" data-discussion-id=11354 data-id=47179434>KOCMOC</a>: <b><em class='search-match'>BOD</em></b>
+        val questionId = this.split(" ", ">").first { it.startsWith("data-id") }.substringAfter("=").toLong()
         val givenTo = this.substringBefore("</a>").substringAfterLast('>')
         return questionId to givenTo
     }
 
     @Get("/save-points")
     fun savePoints(): String = runBlocking {
+        log.info("Saving posts")
         val fromId = Points.getLastPostId(discussionId) ?: 1L
         val data = Nyx.getDiscussion(discussionId, Params("bod", fromId))
         val discussion = json.decodeFromString<Discussion>(data)
@@ -71,9 +74,14 @@ object Main {
                     )
                 )
             }
-            .map {
-                val (questionId, givenTo) = it.content.parsePointData()
-                Point(discussionId, it.id, givenTo, it.insertedAt, questionId, it.username)
+            .mapNotNull {
+                try {
+                    val (questionId, givenTo) = it.content.parsePointData()
+                    Point(discussionId, it.id, givenTo, it.insertedAt, questionId, it.username)
+                } catch (ex: Exception) {
+                    log.warn("Could not parse content:\n ${it.content}")
+                    null
+                }
             }.forEach {
                 saved.add(it.id)
                 Points.addPoint(it)
@@ -97,4 +105,28 @@ object Main {
             LocalDateTime(2022, 2, 19, 17, 6)
         ).joinToString("<br>\n\n")
     }
+
+    @Get("/post")
+    fun post(year: Int) {
+        val userToPoints = Points.getPointsBetween(
+            11354L, // discussionId,
+            LocalDateTime(year, 1, 1, 0, 0),
+            LocalDateTime(year, 12, 31, 23, 59, 59, 999)
+        ).groupBy { it.givenTo }.map { it.key to it.value.size }.sortedByDescending { it.second }
+        val content = """
+            <i>Testovací provoz!</i>
+            
+            Vyhodnocení bodování za rok <b>$year</b>:
+            
+            <table style="width: 300px">
+            <tr><th>Pořadí</th><th>ID</th><th>Počet bodů</th></tr>
+        """.trimIndent().plus(
+            userToPoints.mapIndexed { index, pair -> "<tr><td>${index + 1}</td><td>${pair.first}</td><td>${pair.second}</td></tr>" }.joinToString("")
+                .plus("</table>")
+        )
+        return runBlocking {
+            Nyx.postDiscussion(discussionId, content)
+        }
+    }
+
 }
