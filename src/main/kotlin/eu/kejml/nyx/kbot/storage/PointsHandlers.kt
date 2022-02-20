@@ -53,6 +53,7 @@ fun readPointsFromDiscussion(discussionId: Long): String = runBlocking {
         }.forEach {
             saved.add(it.id)
             Points.addPoint(it)
+            NyxClient.ratePost(discussionId, it.id)
         }
     val logMessage = "Done, latest index was $fromId, saved ${saved.size} new points (${saved.joinToString(", ")})"
     log.info(logMessage)

@@ -18,6 +18,10 @@ enum class PostFormat(val apiString: String) {
     HTML("html"),
 }
 
+enum class RatingAction(val apiString:String) {
+    POSITIVE("positive")
+}
+
 class DiscussionQueryParams(
     private val text: String? = null,
     private val fromId: Long? = null,
@@ -55,6 +59,10 @@ object NyxClient {
         ))
     }
 
+    suspend fun ratePost(discussionId: Long, postId: Long, action: RatingAction = RatingAction.POSITIVE): String {
+        return nyxPost("discussion/$discussionId/rating/$postId/${action.apiString}")
+    }
+
     private suspend fun nyxGet(endpoint: String): String {
         val urlString = "https://nyx.cz/api/$endpoint"
         log.info(urlString)
@@ -65,7 +73,7 @@ object NyxClient {
         }
     }
 
-    private suspend fun nyxPost(endpoint: String, content: Map<String, String>): String {
+    private suspend fun nyxPost(endpoint: String, content: Map<String, String> = emptyMap()): String {
         val urlString = "https://nyx.cz/api/$endpoint"
         log.info(urlString)
         return client.post(urlString) {
