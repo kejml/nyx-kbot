@@ -7,7 +7,6 @@ import kotlinx.datetime.toLocalDateTime
 import org.slf4j.LoggerFactory
 import software.amazon.awssdk.services.dynamodb.DynamoDbClient
 import software.amazon.awssdk.services.dynamodb.model.*
-import kotlin.system.exitProcess
 
 
 const val tableName = "points"
@@ -71,12 +70,9 @@ object Points {
         try {
             client.putItem(request)
         } catch (e: ResourceNotFoundException) {
-            System.err.format("Error: The Amazon DynamoDB table \"%s\" can't be found.\n", tableName)
-            System.err.println("Be sure that it exists and that you've typed its name correctly!")
-            exitProcess(1)
+            log.error("Error: The Amazon DynamoDB table '$tableName' can't be found.", e)
         } catch (e: DynamoDbException) {
-            System.err.println(e.message)
-            exitProcess(2)
+            log.error("Exception while persisting point", e)
         }
     }
 
