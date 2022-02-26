@@ -4,7 +4,7 @@ resource "aws_dynamodb_table" "points" {
   read_capacity = 20
   write_capacity = 20
   hash_key = "discussionId"
-  range_key = "id"
+  range_key = "questionId"
 
   attribute {
     name = "discussionId"
@@ -12,7 +12,12 @@ resource "aws_dynamodb_table" "points" {
   }
 
   attribute {
-    name = "id"
+    name = "questionId"
+    type = "N"
+  }
+
+  attribute {
+    name = "postId"
     type = "N"
   }
 
@@ -25,6 +30,12 @@ resource "aws_dynamodb_table" "points" {
     name            = "dateTimeIndex"
     projection_type = "INCLUDE"
     range_key       = "givenDateTime"
-    non_key_attributes = ["id", "givenTo"]
+    non_key_attributes = ["postId", "givenTo"]
+  }
+
+  local_secondary_index {
+    name            = "lastId"
+    projection_type = "KEYS_ONLY"
+    range_key       = "postId"
   }
 }

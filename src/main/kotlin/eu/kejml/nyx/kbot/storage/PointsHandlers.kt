@@ -16,13 +16,31 @@ import kotlin.time.Duration.Companion.seconds
 private val log = LoggerFactory.getLogger("PointsHandlers")
 private val json = Json { ignoreUnknownKeys = true }
 
+private data class QuestionIdGivenTo(val questionId: Long, val givenTo: String)
+
 // TODO more points in one post? Other text beside point
-private fun String.parsePointData(): Pair<Long, String> {
+private fun String.parsePointData(): List<QuestionIdGivenTo> {
     //<a class=r data-id=54606485 data-discussion-id=20310 href='/discussion/20310/id/54606485'>DEVNOK</a>: <b>BOD</b>
     //<a href="/discussion/11354/id/47179434" class="r" data-discussion-id=11354 data-id=47179434>KOCMOC</a>: <b><em class='search-match'>BOD</em></b>
-    val questionId = this.split(" ", ">").first { it.startsWith("data-id") }.substringAfter("=").toLong()
-    val givenTo = this.substringBefore("</a>").substringAfterLast('>')
-    return questionId to givenTo
+    return this.split("<br>","<br/>", "\n")
+        .filter {
+            log.info("Running regex on $it")
+            it.contains(
+            Regex(
+                """<(b|strong)>(<em.*>)?bod(</em>)?</(b|strong)>""",
+                RegexOption.IGNORE_CASE
+            )) || it.matches(Regex("""^<a.*data-id.*>: BOD$""", RegexOption.IGNORE_CASE))
+         }
+        .filter {
+            log.info("Running second regex on $it")
+            it.startsWith("<a")
+        }
+        .map {
+            val questionId = it.split(" ", ">").first { it.startsWith("data-id") }.substringAfter("=").toLong()
+            val givenTo = it.substringBefore("</a>").substringAfterLast('>')
+            QuestionIdGivenTo(questionId, givenTo)
+        }.toList()
+
 }
 
 fun readPointsFromDiscussion(discussionId: Long): String = runBlocking {
@@ -42,18 +60,21 @@ fun readPointsFromDiscussion(discussionId: Long): String = runBlocking {
                 )
             )
         }
-        .mapNotNull {
+        .map { post ->
             try {
-                val (questionId, givenTo) = it.content.parsePointData()
-                Point(discussionId, it.id, givenTo, it.insertedAt, questionId, it.username)
+                post.content.parsePointData().map {
+                    Point(discussionId, post.id, it.givenTo, post.insertedAt, it.questionId, post.username)
+                }.toList()
             } catch (ex: Exception) {
-                log.warn("Could not parse content:\n ${it.content}")
-                null
+                log.warn("Could not parse content:\n ${post.content}")
+                emptyList()
             }
-        }.forEach {
-            saved.add(it.id)
+        }
+        .flatten()
+        .forEach {
+            saved.add(it.postId)
             Points.addPoint(it)
-            NyxClient.ratePost(discussionId, it.id)
+            NyxClient.ratePost(discussionId, it.postId)
         }
     val logMessage = "Done, latest index was $fromId, saved ${saved.size} new points (${saved.joinToString(", ")})"
     log.info(logMessage)
@@ -89,7 +110,9 @@ fun postSummary(discussionId: Long, intro: String, from: LocalDateTime, to: Loca
         discussionId,
         from,
         to
-    ).groupBy { it.givenTo }
+    )
+        .filter { it.givenTo != null }
+        .groupBy { it.givenTo!! }
         .map { it.key to it.value.size }
         .groupBy({it.second}) { it.first }
     var globalOrder = 1 // Good enough now

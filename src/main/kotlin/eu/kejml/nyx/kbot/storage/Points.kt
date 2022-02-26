@@ -13,9 +13,9 @@ const val tableName = "points"
 
 data class Point(
     val discussionId: Long,
-    val id: Long,
-    val givenTo: String,
-    val givenDateTime: LocalDateTime,
+    val postId: Long,
+    val givenTo: String?,
+    val givenDateTime: LocalDateTime?,
     val questionId: Long?,
     val givenBy: String?,
 )
@@ -24,9 +24,9 @@ fun fromAttributeValues(input: Map<String, AttributeValue>): Point {
     println(input)
     return Point(
         discussionId = input["discussionId"]?.n()?.toLong() ?: throw IllegalArgumentException("Missing attribute discussionId"),
-        id = input["id"]?.n()?.toLong() ?: throw IllegalArgumentException("Missing attribute id"),
-        givenTo = input["givenTo"]?.s() ?: throw IllegalArgumentException("Missing attribute givenTo"),
-        givenDateTime = input["givenDateTime"]?.s()?.toLocalDateTime() ?: throw IllegalArgumentException("Missing attribute givenDateTime"),
+        postId = input["postId"]?.n()?.toLong() ?: throw IllegalArgumentException("Missing attribute id"),
+        givenTo = input["givenTo"]?.s(),
+        givenDateTime = input["givenDateTime"]?.s()?.toLocalDateTime(),
         questionId = input["questionId"]?.n()?.toLong(),
         givenBy = input["givenBy"]?.s(),
     )
@@ -41,6 +41,7 @@ object Points {
 
         val request = QueryRequest.builder()
             .tableName(tableName)
+            .indexName("lastId")
             .keyConditionExpression("discussionId = :discussionId")
             .expressionAttributeValues(mapOf(
                 ":discussionId" to AttributeValue.builder().n(discussionId.toString()).build()
@@ -49,14 +50,14 @@ object Points {
             .limit(1)
             .build()
 
-        return client.query(request).items()?.let { item -> item.getOrNull(0)?.let { fromAttributeValues(it) }?.id }
+        return client.query(request).items()?.let { item -> item.getOrNull(0)?.let { fromAttributeValues(it) }?.postId }
     }
 
     internal fun addPoint(point: Point) {
         val pointValues = HashMap<String, AttributeValue>()
 
         pointValues["discussionId"] = AttributeValue.builder().n(point.discussionId.toString()).build()
-        pointValues["id"] = AttributeValue.builder().n(point.id.toString()).build()
+        pointValues["postId"] = AttributeValue.builder().n(point.postId.toString()).build()
         pointValues["givenTo"] = AttributeValue.builder().s(point.givenTo).build()
         pointValues["givenDateTime"] = AttributeValue.builder().s(point.givenDateTime.toString()).build()
         pointValues["questionId"] = AttributeValue.builder().n(point.questionId.toString()).build()
@@ -79,7 +80,7 @@ object Points {
     internal fun getAPoint(id: Long): Point? {
         val keyToGet = HashMap<String, AttributeValue>()
 
-        keyToGet["id"] = AttributeValue.builder()
+        keyToGet["postId"] = AttributeValue.builder()
             .n(id.toString()).build()
 
         val request = GetItemRequest.builder()
