@@ -118,25 +118,23 @@ fun postSummary(discussionId: Long, intro: String, from: LocalDateTime, to: Loca
         .toSortedMap { o1, o2 -> o2.compareTo(o1) }
     var globalOrder = 1 // Good enough now
     val content = """
-            <i>Testovací provoz!</i>
-            
-            $intro
-            
-            <table style="width: 300px">
-            <tr><th>Pořadí</th><th>ID</th><th>Počet bodů</th></tr>
+            <i>Testovací provoz!</i><br>
+            <br>
+            $intro<br>
+            <br>
         """.trimIndent().plus(
         pointsToUser.entries.joinToString("\n") { pair ->
             val numberOfUsers = pair.value.size
             val resultLine =
                 pair.value.sorted().joinToString("\n") { user ->
-                    "<tr><td>${determineOrder(numberOfUsers, globalOrder)}.</td><td>${user}</td><td>${pair.key}</td></tr>"
+                    "${determineOrder(numberOfUsers, globalOrder).padEndHtml(27)}${user.padEndHtml(28)}${pair.key}<br>\n"
             }
             globalOrder += numberOfUsers
             resultLine
         }
             .plus("""
-                </table>
-                
+                <br>
+                <br>
                 <small><i>Veškeré stížnosti a jinou zpětnou vazbu směřujte prosím na ID KEJML</i></small>
             """.trimIndent())
     )
@@ -145,5 +143,31 @@ fun postSummary(discussionId: Long, intro: String, from: LocalDateTime, to: Loca
     }
 }
 
+/**
+ * Ugly hack to almost align columns - some less capable mobile clients don't fully support HTML in posts,
+ * so simple table can't be used.
+ */
+private fun String.padEndHtml(length: Int): String {
+    val count = this.chunked(2).count { it == "🥇" || it == "🥈" || it == "🥉" }
+    return this.padEnd(length - count - (this.length/1.2).toInt()).replace(" ", "&nbsp;")
+}
+
 private fun determineOrder(numberOfUsers: Int, globalOrder: Int) =
-    if (numberOfUsers == 1) globalOrder else "$globalOrder.-${globalOrder + numberOfUsers - 1}"
+    if (numberOfUsers == 1) {
+        "${addMedal(globalOrder)}$globalOrder."
+    } else {
+        "${addMedals(globalOrder, globalOrder + numberOfUsers - 1)}."
+    }
+
+private fun addMedal(order: Int): String {
+    return when (order) {
+        1 -> "🥇"
+        2 -> "🥈"
+        3 -> "🥉"
+        else -> " "
+    }
+}
+
+private fun addMedals(from: Int, to: Int): String {
+    return "${(from..to).intersect(1..3).joinToString("") { addMedal(it) }} $from.-$to"
+}
