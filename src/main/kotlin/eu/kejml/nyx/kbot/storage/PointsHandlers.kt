@@ -115,6 +115,7 @@ fun postSummary(discussionId: Long, intro: String, from: LocalDateTime, to: Loca
         .groupBy { it.givenTo!! }
         .map { it.key to it.value.size }
         .groupBy({it.second}) { it.first }
+        .toSortedMap { o1, o2 -> o2.compareTo(o1) }
     var globalOrder = 1 // Good enough now
     val content = """
             <i>Testovací provoz!</i>
