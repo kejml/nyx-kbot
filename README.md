@@ -5,7 +5,7 @@ on the server.
 
 ## Technical overview
 
-Runs in AWS using [Kotless](https://github.com/JetBrains/kotless)
+Runs in AWS thanks to [Kotless](https://github.com/JetBrains/kotless), using Lambda and DynamoDB.
 
 ## Running and Deployment
 
