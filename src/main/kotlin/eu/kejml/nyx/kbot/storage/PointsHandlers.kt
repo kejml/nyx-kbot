@@ -135,7 +135,7 @@ fun postSummary(discussionId: Long, intro: String, from: LocalDateTime, to: Loca
             .plus("""
                 <br>
                 <br>
-                <small><i>Veškeré stížnosti a jinou zpětnou vazbu směřujte prosím na ID KEJML</i></small>
+                <small><i>Veškeré stížnosti a jinou zpětnou vazbu směřujte prosím na ID KEJML nebo na <a href="https://github.com/kejml/nyx-kbot">Github</a>.</i></small>
             """.trimIndent())
     )
     return runBlocking {
