@@ -18,7 +18,6 @@ private val json = Json { ignoreUnknownKeys = true }
 
 private data class QuestionIdGivenTo(val questionId: Long, val givenTo: String)
 
-// TODO more points in one post? Other text beside point
 private fun String.parsePointData(): List<QuestionIdGivenTo> {
     //<a class=r data-id=54606485 data-discussion-id=20310 href='/discussion/20310/id/54606485'>DEVNOK</a>: <b>BOD</b>
     //<a href="/discussion/11354/id/47179434" class="r" data-discussion-id=11354 data-id=47179434>KOCMOC</a>: <b><em class='search-match'>BOD</em></b>
