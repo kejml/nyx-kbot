@@ -51,14 +51,6 @@ fun readPointsFromDiscussion(discussionId: Long): String = runBlocking {
     val saved = mutableListOf<Long>();
     discussion.posts
         .filter { it.id > fromId }
-        .filter {
-            it.content.contains(
-                Regex(
-                    "<(b|strong)>(<em.*>)?bod(</em>)?</(b|strong)>",
-                    RegexOption.IGNORE_CASE
-                )
-            )
-        }
         .map { post ->
             try {
                 post.content.parsePointData().map {
