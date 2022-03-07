@@ -10,6 +10,7 @@ internal class PointsHandlersKtTest {
     @ParameterizedTest
     @ValueSource(
         strings = [
+            // Regular points
             """<a data-id=42 href="https://nyx.cz">UZIVATEL</a>: BOD""",
             """<a href="https://nyx.cz" data-id=42>UZIVATEL</a>: BOD""",
             """<a href="https://nyx.cz" data-id=42>UZIVATEL</a>: bod""",
@@ -25,6 +26,9 @@ internal class PointsHandlersKtTest {
             "Text pred\n<a href=\"https://nyx.cz\" data-id=42>UZIVATEL</a>: <b>BOD</b>",
             "<a href=\"https://nyx.cz\" data-id=42>UZIVATEL</a>: <b>BOD</b>\n text po",
             "Text pred\n\n<a href=\"https://nyx.cz\" data-id=42>UZIVATEL</a>: <b>BOD</b>\ni text pod",
+            // Common typos
+            """<a href="https://nyx.cz" data-id=42>UZIVATEL</a>: <b>BOD<b>""",
+            """<a href="https://nyx.cz" data-id=42>UZIVATEL</a>: <strong>BOD<strong>""",
         ]
     )
     fun `parsing single point`(postContent: String) {
