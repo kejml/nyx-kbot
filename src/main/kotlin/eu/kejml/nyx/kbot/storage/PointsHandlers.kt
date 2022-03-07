@@ -16,9 +16,9 @@ import kotlin.time.Duration.Companion.seconds
 private val log = LoggerFactory.getLogger("PointsHandlers")
 private val json = Json { ignoreUnknownKeys = true }
 
-private data class QuestionIdGivenTo(val questionId: Long, val givenTo: String)
+internal data class QuestionIdGivenTo(val questionId: Long, val givenTo: String)
 
-private fun String.parsePointData(): List<QuestionIdGivenTo> {
+internal fun String.parsePointData(): List<QuestionIdGivenTo> {
     //<a class=r data-id=54606485 data-discussion-id=20310 href='/discussion/20310/id/54606485'>DEVNOK</a>: <b>BOD</b>
     //<a href="/discussion/11354/id/47179434" class="r" data-discussion-id=11354 data-id=47179434>KOCMOC</a>: <b><em class='search-match'>BOD</em></b>
     return this.split("<br>","<br/>", "\n")
@@ -26,7 +26,7 @@ private fun String.parsePointData(): List<QuestionIdGivenTo> {
             log.info("Running regex on $it")
             it.contains(
             Regex(
-                """<(b|strong)>(<em.*>)?bod(</em>)?</(b|strong)>""",
+                """^<a.*data-id.*>:.*<(b|strong)>(<em.*>)?bod(</em>)?</(b|strong)>""",
                 RegexOption.IGNORE_CASE
             )) || it.matches(Regex("""^<a.*data-id.*>: BOD$""", RegexOption.IGNORE_CASE))
          }

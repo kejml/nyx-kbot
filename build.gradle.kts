@@ -31,6 +31,8 @@ dependencies {
     implementation("software.amazon.awssdk:dynamodb")
 
     testImplementation(kotlin("test"))
+    testImplementation("io.strikt:strikt-core:0.34.1")
+    testImplementation("org.junit.jupiter:junit-jupiter-params:5.8.2")
 }
 
 kotless {
