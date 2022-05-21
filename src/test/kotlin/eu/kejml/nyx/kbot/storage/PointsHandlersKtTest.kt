@@ -18,6 +18,7 @@ internal class PointsHandlersKtTest {
             """<a href="https://nyx.cz" data-id=42>UZIVATEL</a>: <b>bod</b>""",
             """<a href="https://nyx.cz" data-id=42>UZIVATEL</a>: <B>bod</b>""",
             """<a href="https://nyx.cz" data-id=42>UZIVATEL</a>: <B>bod</B>""",
+            """<a href="https://nyx.cz" data-id=42>UZIVATEL</a>: <b><em>BOD</em></b>""",
             """<a href="https://nyx.cz" data-id=42>UZIVATEL</a>: Davam <B>bod</B>""",
             """<a href="https://nyx.cz" data-id=42>UZIVATEL</a>: Davam <B>bod</B> a zadej""",
             """<a href="https://nyx.cz" data-id=42>UZIVATEL</a>: <B>bod</B> a zadej""",
@@ -29,6 +30,10 @@ internal class PointsHandlersKtTest {
             // Common typos
             """<a href="https://nyx.cz" data-id=42>UZIVATEL</a>: <b>BOD<b>""",
             """<a href="https://nyx.cz" data-id=42>UZIVATEL</a>: <strong>BOD<strong>""",
+            """<a href="https://nyx.cz" data-id=42>UZIVATEL</a>: <b> BOD </b>""",
+            """<a href="https://nyx.cz" data-id=42>UZIVATEL</a>: <b>     BOD      </b>""",
+            """<a href="https://nyx.cz" data-id=42>UZIVATEL</a>: <b> <em>BOD</em> </b>""",
+            """<a href="https://nyx.cz" data-id=42>UZIVATEL</a>: <b><em> BOD </em></b>""",
         ]
     )
     fun `parsing single point`(postContent: String) {

@@ -26,7 +26,7 @@ internal fun String.parsePointData(): List<QuestionIdGivenTo> {
             log.info("Running regex on $it")
             it.contains(
             Regex(
-                """^<a.*data-id.*>:.*<(b|strong)>(<em.*>)?bod(</em>)?</?(b|strong)>""",
+                """^<a.*data-id.*>:.*<(b|strong)> *(<em.*>)? *bod *(</em>)? *</?(b|strong)>""",
                 RegexOption.IGNORE_CASE
             )) || it.matches(Regex("""^<a.*data-id.*>: BOD$""", RegexOption.IGNORE_CASE))
          }
