@@ -111,6 +111,6 @@ object Points {
             ))
             .build()
 
-        return client.query(request).items()?.let { item -> item.map { fromAttributeValues(it) } }?.toList() ?: emptyList()
+        return client.queryPaginator(request).items()?.let { item -> item.map { fromAttributeValues(it) } }?.toList() ?: emptyList()
     }
 }
