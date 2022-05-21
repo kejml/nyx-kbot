@@ -2,7 +2,7 @@ import io.kotless.plugin.gradle.dsl.kotless
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 
 plugins {
-    kotlin("jvm") version "1.6.10"
+    kotlin("jvm") version "1.6.10"  // Kotless doesn't work with kotlin 1.6.21 - https://github.com/JetBrains/kotless/issues/121
     kotlin("plugin.serialization") version "1.6.10" apply true
     id("io.kotless") version "0.2.0" apply true
 }
@@ -11,7 +11,7 @@ group = "eu.kejml"
 version = "1.0-SNAPSHOT"
 
 val kotlessVersion by extra("0.2.0")
-val ktorVersion by extra("1.6.7")
+val ktorVersion by extra("1.6.8")
 
 repositories {
     mavenCentral()
@@ -24,10 +24,10 @@ dependencies {
     implementation("io.kotless", "kotless-lang-aws", kotlessVersion)
     implementation("io.ktor", "ktor-client-core", ktorVersion)
     implementation("io.ktor", "ktor-client-cio", ktorVersion)
-    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.3.2")
-    implementation("org.jetbrains.kotlinx:kotlinx-datetime:0.3.2")
+    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.3.3")
+    implementation("org.jetbrains.kotlinx:kotlinx-datetime:0.3.3")
     // AWS SDK
-    implementation(platform("software.amazon.awssdk:bom:2.17.133"))
+    implementation(platform("software.amazon.awssdk:bom:2.17.196"))
     implementation("software.amazon.awssdk:dynamodb")
 
     testImplementation(kotlin("test"))
