@@ -74,11 +74,17 @@ fun readPointsFromDiscussion(discussionId: Long): String = runBlocking {
 
 
 fun postYearlySummary(discussionId: Long, year: Int) {
-    postSummary(
+    val pointsTable = renderPointsTable(
         discussionId,
-        "Vyhodnocení bodování za rok <b>$year</b>:",
         LocalDateTime(year, 1, 1, 0, 0),
         LocalDateTime(year, 12, 31, 23, 59, 59, 999),
+    )
+    postSummary("""
+        "Vyhodnocení bodování za rok <b>$year</b>:",
+        <br>
+        """.trimIndent().plus(
+        pointsTable),
+        discussionId
     )
 }
 
@@ -87,37 +93,48 @@ fun postMonthlySummary(discussionId: Long, month: Month, year: Int) {
 
     val monthString = month.getDisplayName(TextStyle.FULL_STANDALONE, Locale.forLanguageTag("cs"))
 
-    postSummary(
+    val pointsTableMonth = renderPointsTable(
         discussionId,
-        "Vyhodnocení bodování za měsíc <b>$monthString $year</b>:",
         LocalDateTime(year, month, 1, 0, 0),
         LocalDateTime(year, month + 1, 1, 0, 0)
             .toInstant(TimeZone.UTC).minus(1.seconds).toLocalDateTime(TimeZone.UTC),
     )
+
+    val pointsTableYear = renderPointsTable(
+        discussionId,
+        LocalDateTime(year, 1, 1, 0, 0),
+        LocalDateTime(year, month + 1, 1, 0, 0)
+            .toInstant(TimeZone.UTC).minus(1.seconds).toLocalDateTime(TimeZone.UTC),
+        10
+    )
+
+    postSummary("""
+        Vyhodnocení bodování za měsíc <b>$monthString $year</b>:<br>
+        <br>
+        """.trimIndent()
+        .plus(pointsTableMonth)
+        .plus("<br>Top 10 průběžné pořadí za rok $year:<br><br>")
+        .plus(pointsTableYear),
+        discussionId
+    )
 }
 
-fun postSummary(discussionId: Long, intro: String, from: LocalDateTime, to: LocalDateTime) {
-
+fun postSummary(body: String, discussionId: Long) {
     val content = """
             <i>Testovací provoz!</i><br>
             <br>
-            $intro<br>
+            $body
             <br>
-        """.trimIndent().plus(
-        renderPointTable(discussionId, from, to)
-            .plus("""
-                <br>
-                <br>
-                <small><i>Veškeré stížnosti a jinou zpětnou vazbu směřujte prosím na ID KEJML nebo na <a href="https://github.com/kejml/nyx-kbot">Github</a>.</i></small>
-            """.trimIndent())
-    )
+            <br>
+            <small><i>Veškeré stížnosti a jinou zpětnou vazbu směřujte prosím na ID KEJML nebo na <a href="https://github.com/kejml/nyx-kbot">Github</a>.</i></small>
+            """.trimIndent()
     return runBlocking {
         NyxClient.postDiscussion(discussionId, content)
     }
 }
 
-private fun renderPointTable(
-    discussionId: Long, from: LocalDateTime, to: LocalDateTime
+private fun renderPointsTable(
+    discussionId: Long, from: LocalDateTime, to: LocalDateTime, limitDisplayedPlaces: Int = Int.MAX_VALUE
 ): String {
     var globalOrder = 1 // Good enough now
 
@@ -133,6 +150,7 @@ private fun renderPointTable(
         .toSortedMap { o1, o2 -> o2.compareTo(o1) }
 
     return pointsToUser.entries.joinToString("\n") { pair ->
+        if (globalOrder > limitDisplayedPlaces) return@joinToString ""
         val numberOfUsers = pair.value.size
         val resultLine =
             pair.value.sorted().joinToString("\n") { user ->
