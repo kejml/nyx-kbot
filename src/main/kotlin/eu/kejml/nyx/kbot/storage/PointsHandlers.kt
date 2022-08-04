@@ -121,8 +121,6 @@ fun postMonthlySummary(discussionId: Long, month: Month, year: Int) {
 
 fun postSummary(body: String, discussionId: Long) {
     val content = """
-            <i>Testovací provoz!</i><br>
-            <br>
             $body
             <br>
             <br>
