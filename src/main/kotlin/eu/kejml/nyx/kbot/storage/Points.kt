@@ -77,6 +77,26 @@ object Points {
         }
     }
 
+    internal fun removePoint(point: Point) {
+        val keyToRemove = mapOf<String, AttributeValue>(
+            "discussionId" to AttributeValue.builder().n(point.discussionId.toString()).build(),
+            "questionId" to AttributeValue.builder().n(point.questionId.toString()).build(),
+        )
+
+        val request = DeleteItemRequest.builder()
+            .tableName(tableName)
+            .key(keyToRemove)
+            .build()
+
+        try {
+            client.deleteItem(request)
+        } catch (e: ResourceNotFoundException) {
+            log.error("Error: The Amazon DynamoDB table '$tableName' can't be found.", e)
+        } catch (e: DynamoDbException) {
+            log.error("Exception while deleting point", e)
+        }
+    }
+
     internal fun getAPoint(id: Long): Point? {
         val keyToGet = HashMap<String, AttributeValue>()
 

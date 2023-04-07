@@ -1,6 +1,7 @@
 package eu.kejml.nyx.kbot.storage
 
 import eu.kejml.nyx.kbot.api.Discussion
+import eu.kejml.nyx.kbot.api.DiscussionOrder
 import eu.kejml.nyx.kbot.api.DiscussionQueryParams
 import eu.kejml.nyx.kbot.api.NyxClient
 import kotlinx.coroutines.runBlocking
@@ -72,6 +73,18 @@ fun readPointsFromDiscussion(discussionId: Long): String = runBlocking {
     logMessage
 }
 
+fun List<Point>.validatePointsAndRemoveInvalid(): List<Point> = runBlocking {
+    filter { point ->
+        val data = NyxClient.getDiscussion(point.discussionId, DiscussionQueryParams(fromId = point.postId + 1, discussionOrder = DiscussionOrder.OLDER_THAN))
+        val posts = json.decodeFromString<Discussion>(data).posts
+        val result = posts.first().id == point.postId
+        if (!result) {
+            log.info("Removing point $point - not found in the discussion anymore. (Found only posts with ids: ${posts.map { it.id }}")
+            Points.removePoint(point)
+        }
+        result
+    }
+}
 
 fun postYearlySummary(discussionId: Long, year: Int) {
     val pointsTable = renderPointsTable(
@@ -141,6 +154,7 @@ private fun renderPointsTable(
         from,
         to
     )
+        .validatePointsAndRemoveInvalid()
         .filter { it.givenTo != null }
         .groupBy { it.givenTo!! }
         .map { it.key to it.value }
