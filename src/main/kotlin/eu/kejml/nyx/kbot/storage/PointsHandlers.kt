@@ -80,7 +80,7 @@ fun postYearlySummary(discussionId: Long, year: Int) {
         LocalDateTime(year, 12, 31, 23, 59, 59, 999),
     )
     postSummary("""
-        "Vyhodnocení bodování za rok <b>$year</b>:",
+        Vyhodnocení bodování za rok <b>$year</b>:<br>
         <br>
         """.trimIndent().plus(
         pointsTable),
