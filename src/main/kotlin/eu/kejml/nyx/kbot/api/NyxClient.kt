@@ -1,8 +1,10 @@
 package eu.kejml.nyx.kbot.api
 
 import io.ktor.client.*
+import io.ktor.client.call.*
 import io.ktor.client.request.*
 import io.ktor.client.request.forms.*
+import io.ktor.client.statement.*
 import io.ktor.http.*
 import org.slf4j.LoggerFactory
 import java.io.InputStream
@@ -66,17 +68,18 @@ object NyxClient {
     private suspend fun nyxGet(endpoint: String): String {
         val urlString = "https://nyx.cz/api/$endpoint"
         log.info(urlString)
-        return client.get(urlString) {
+        val response = client.get<HttpResponse>(urlString) {
             headers {
                 this.append("Authorization", "Bearer $nyxToken")
             }
         }
+        return if (response.status.isSuccess()) response.receive() else throw IllegalStateException("Unexpected response from nyx.cz: $response")
     }
 
     private suspend fun nyxPost(endpoint: String, content: Map<String, String> = emptyMap()): String {
         val urlString = "https://nyx.cz/api/$endpoint"
         log.info(urlString)
-        return client.post(urlString) {
+        val response = client.post<HttpResponse>(urlString) {
             headers {
                 this.append("Authorization", "Bearer $nyxToken")
             }
@@ -84,5 +87,6 @@ object NyxClient {
                 content.map { append(it.key, it.value) }
             })
         }
+        return if (response.status.isSuccess()) response.receive() else throw IllegalStateException("Unexpected response from nyx.cz: $response")
     }
 }
