@@ -143,21 +143,29 @@ private fun renderPointsTable(
     )
         .filter { it.givenTo != null }
         .groupBy { it.givenTo!! }
-        .map { it.key to it.value.size }
-        .groupBy({it.second}) { it.first }
-        .toSortedMap { o1, o2 -> o2.compareTo(o1) }
+        .map { it.key to it.value }
+        .groupBy({ it.second.size }) { pair -> UserAndPoints(pair.first, pair.second) }
+        .toSortedMap(reverseOrder())
 
-    return pointsToUser.entries.joinToString("\n") { pair ->
+    return pointsToUser.entries.joinToString("\n") { numToUserPointsMap ->
         if (globalOrder > limitDisplayedPlaces) return@joinToString ""
-        val numberOfUsers = pair.value.size
-        val resultLine =
-            pair.value.sorted().joinToString("\n") { user ->
-                "${determineOrder(numberOfUsers, globalOrder).padEndHtml(27)}${user.padEndHtml(28)}${pair.key}<br>\n"
-            }
+        val numberOfUsers = numToUserPointsMap.value.size
+        val resultLine = numToUserPointsMap.value.sortedBy { it.userName }.joinToString("\n") { userAndPoints ->
+            """
+                ${determineOrder(numberOfUsers, globalOrder).padEndHtml(27)}
+                ${userAndPoints.userName.padEndHtml(28)}
+                ${numToUserPointsMap.key} ${userAndPoints.points.toPointLinks()}
+                <br>
+            """.trimIndent()
+        }
         globalOrder += numberOfUsers
         resultLine
     }
 }
+
+data class UserAndPoints(val userName: String, val points: List<Point>)
+
+fun List<Point>.toPointLinks(): String = joinToString("") { "{reply .|${it.postId}}" }
 
 /**
  * Ugly hack to almost align columns - some less capable mobile clients don't fully support HTML in posts,
