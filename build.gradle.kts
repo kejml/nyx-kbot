@@ -2,9 +2,10 @@ import io.kotless.plugin.gradle.dsl.kotless
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 
 plugins {
-    kotlin("jvm") version "1.6.10"  // Kotless doesn't work with kotlin 1.6.21 - https://github.com/JetBrains/kotless/issues/121
+    kotlin("jvm") version "1.6.10" // Kotless doesn't work with kotlin 1.6.21 - https://github.com/JetBrains/kotless/issues/121
     kotlin("plugin.serialization") version "1.6.10" apply true
     id("io.kotless") version "0.2.0" apply true
+    id("org.jlleitschuh.gradle.ktlint") version "11.3.1"
 }
 
 group = "eu.kejml"
@@ -15,7 +16,7 @@ val ktorVersion by extra("1.6.8")
 
 repositories {
     mavenCentral()
-    //Kotless repository
+    // Kotless repository
     maven(url = uri("https://packages.jetbrains.team/maven/p/ktls/maven"))
 }
 
@@ -61,7 +62,6 @@ kotless {
         }
     }
 }
-
 
 tasks.test {
     useJUnitPlatform()

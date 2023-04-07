@@ -20,14 +20,14 @@ enum class PostFormat(val apiString: String) {
     HTML("html"),
 }
 
-enum class RatingAction(val apiString:String) {
-    POSITIVE("positive")
+enum class RatingAction(val apiString: String) {
+    POSITIVE("positive"),
 }
 
 class DiscussionQueryParams(
     private val text: String? = null,
     private val fromId: Long? = null,
-    private val discussionOrder: DiscussionOrder = DiscussionOrder.NEWER_THAN
+    private val discussionOrder: DiscussionOrder = DiscussionOrder.NEWER_THAN,
 ) {
     private fun isEmpty() = text == null && fromId == null
 
@@ -38,7 +38,6 @@ class DiscussionQueryParams(
             text?.let { "text=$it" },
             fromId?.let { "from_id=$it&order=${discussionOrder.apiString}" },
         ).joinToString(separator = "&", prefix = "?")
-
     }
 }
 
@@ -55,10 +54,13 @@ object NyxClient {
     }
 
     suspend fun postDiscussion(discussionId: Long, content: String, format: PostFormat = PostFormat.HTML): String {
-        return nyxPost("discussion/$discussionId/send/text", mapOf(
-            "content" to content,
-            "format" to format.apiString,
-        ))
+        return nyxPost(
+            "discussion/$discussionId/send/text",
+            mapOf(
+                "content" to content,
+                "format" to format.apiString,
+            ),
+        )
     }
 
     suspend fun ratePost(discussionId: Long, postId: Long, action: RatingAction = RatingAction.POSITIVE): String {
@@ -83,9 +85,11 @@ object NyxClient {
             headers {
                 this.append("Authorization", "Bearer $nyxToken")
             }
-            body = FormDataContent(Parameters.build {
-                content.map { append(it.key, it.value) }
-            })
+            body = FormDataContent(
+                Parameters.build {
+                    content.map { append(it.key, it.value) }
+                },
+            )
         }
         return if (response.status.isSuccess()) response.receive() else throw IllegalStateException("Unexpected response from nyx.cz: $response")
     }

@@ -12,5 +12,5 @@ data class Post(
     val id: Long,
     val username: String,
     val content: String,
-    @SerialName("inserted_at") val insertedAt: LocalDateTime
+    @SerialName("inserted_at") val insertedAt: LocalDateTime,
 )

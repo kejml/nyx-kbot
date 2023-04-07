@@ -5,8 +5,11 @@ import eu.kejml.nyx.kbot.api.DiscussionOrder
 import eu.kejml.nyx.kbot.api.DiscussionQueryParams
 import eu.kejml.nyx.kbot.api.NyxClient
 import kotlinx.coroutines.runBlocking
-import kotlinx.datetime.*
+import kotlinx.datetime.LocalDateTime
+import kotlinx.datetime.Month
 import kotlinx.datetime.TimeZone
+import kotlinx.datetime.toInstant
+import kotlinx.datetime.toLocalDateTime
 import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.json.Json
 import org.slf4j.LoggerFactory
@@ -20,17 +23,18 @@ private val json = Json { ignoreUnknownKeys = true }
 internal data class QuestionIdGivenTo(val questionId: Long, val givenTo: String)
 
 internal fun String.parsePointData(): List<QuestionIdGivenTo> {
-    //<a class=r data-id=54606485 data-discussion-id=20310 href='/discussion/20310/id/54606485'>DEVNOK</a>: <b>BOD</b>
-    //<a href="/discussion/11354/id/47179434" class="r" data-discussion-id=11354 data-id=47179434>KOCMOC</a>: <b><em class='search-match'>BOD</em></b>
-    return this.split("<br>","<br/>", "\n")
+    // <a class=r data-id=54606485 data-discussion-id=20310 href='/discussion/20310/id/54606485'>DEVNOK</a>: <b>BOD</b>
+    // <a href="/discussion/11354/id/47179434" class="r" data-discussion-id=11354 data-id=47179434>KOCMOC</a>: <b><em class='search-match'>BOD</em></b>
+    return this.split("<br>", "<br/>", "\n")
         .filter {
             log.info("Running regex on $it")
             it.contains(
-            Regex(
-                """^<a.*data-id.*>:.*<(b|strong)> *(<em.*>)? *bod *(</em>)? *</?(b|strong)>""",
-                RegexOption.IGNORE_CASE
-            )) || it.matches(Regex("""^<a.*data-id.*>: BOD$""", RegexOption.IGNORE_CASE))
-         }
+                Regex(
+                    """^<a.*data-id.*>:.*<(b|strong)> *(<em.*>)? *bod *(</em>)? *</?(b|strong)>""",
+                    RegexOption.IGNORE_CASE,
+                ),
+            ) || it.matches(Regex("""^<a.*data-id.*>: BOD$""", RegexOption.IGNORE_CASE))
+        }
         .filter {
             log.info("Running second regex on $it")
             it.startsWith("<a")
@@ -40,7 +44,6 @@ internal fun String.parsePointData(): List<QuestionIdGivenTo> {
             val givenTo = it.substringBefore("</a>").substringAfterLast('>')
             QuestionIdGivenTo(questionId, givenTo)
         }.toList()
-
 }
 
 fun readPointsFromDiscussion(discussionId: Long): String = runBlocking {
@@ -49,7 +52,7 @@ fun readPointsFromDiscussion(discussionId: Long): String = runBlocking {
     val data = NyxClient.getDiscussion(discussionId, DiscussionQueryParams("bod -bodování", fromId))
     val discussion = json.decodeFromString<Discussion>(data)
     log.info(discussion.toString())
-    val saved = mutableListOf<Long>();
+    val saved = mutableListOf<Long>()
     discussion.posts
         .filter { it.id > fromId }
         .map { post ->
@@ -92,12 +95,14 @@ fun postYearlySummary(discussionId: Long, year: Int) {
         LocalDateTime(year, 1, 1, 0, 0),
         LocalDateTime(year, 12, 31, 23, 59, 59, 999),
     )
-    postSummary("""
+    postSummary(
+        """
         Vyhodnocení bodování za rok <b>$year</b>:<br>
         <br>
         """.trimIndent().plus(
-        pointsTable),
-        discussionId
+            pointsTable,
+        ),
+        discussionId,
     )
 }
 
@@ -118,17 +123,18 @@ fun postMonthlySummary(discussionId: Long, month: Month, year: Int) {
         LocalDateTime(year, 1, 1, 0, 0),
         LocalDateTime(year, month + 1, 1, 0, 0)
             .toInstant(TimeZone.UTC).minus(1.seconds).toLocalDateTime(TimeZone.UTC),
-        10
+        10,
     )
 
-    postSummary("""
+    postSummary(
+        """
         Vyhodnocení bodování za měsíc <b>$monthString $year</b>:<br>
         <br>
         """.trimIndent()
-        .plus(pointsTableMonth)
-        .plus("<br>Top 10 průběžné pořadí za rok $year:<br><br>")
-        .plus(pointsTableYear),
-        discussionId
+            .plus(pointsTableMonth)
+            .plus("<br>Top 10 průběžné pořadí za rok $year:<br><br>")
+            .plus(pointsTableYear),
+        discussionId,
     )
 }
 
@@ -138,21 +144,24 @@ fun postSummary(body: String, discussionId: Long) {
             <br>
             <br>
             <small><i>Veškeré stížnosti a jinou zpětnou vazbu směřujte prosím na ID KEJML nebo na <a href="https://github.com/kejml/nyx-kbot">Github</a>.</i></small>
-            """.trimIndent()
+    """.trimIndent()
     return runBlocking {
         NyxClient.postDiscussion(discussionId, content)
     }
 }
 
 private fun renderPointsTable(
-    discussionId: Long, from: LocalDateTime, to: LocalDateTime, limitDisplayedPlaces: Int = Int.MAX_VALUE
+    discussionId: Long,
+    from: LocalDateTime,
+    to: LocalDateTime,
+    limitDisplayedPlaces: Int = Int.MAX_VALUE,
 ): String {
     var globalOrder = 1 // Good enough now
 
     val pointsToUser = Points.getPointsBetween(
         discussionId,
         from,
-        to
+        to,
     )
         .validatePointsAndRemoveInvalid()
         .filter { it.givenTo != null }
@@ -187,7 +196,7 @@ fun List<Point>.toPointLinks(): String = joinToString("") { "{reply .|${it.postI
  */
 private fun String.padEndHtml(length: Int): String {
     val count = this.chunked(2).count { it == "🥇" || it == "🥈" || it == "🥉" }
-    return this.padEnd(length - count - (this.length/1.2).toInt()).replace(" ", "&nbsp;")
+    return this.padEnd(length - count - (this.length / 1.2).toInt()).replace(" ", "&nbsp;")
 }
 
 private fun determineOrder(numberOfUsers: Int, globalOrder: Int) =

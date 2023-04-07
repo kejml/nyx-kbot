@@ -3,7 +3,11 @@ package eu.kejml.nyx.kbot.storage
 import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.ValueSource
 import strikt.api.expectThat
-import strikt.assertions.*
+import strikt.assertions.any
+import strikt.assertions.first
+import strikt.assertions.hasSize
+import strikt.assertions.isEmpty
+import strikt.assertions.isEqualTo
 
 internal class PointsHandlersKtTest {
 
@@ -34,7 +38,7 @@ internal class PointsHandlersKtTest {
             """<a href="https://nyx.cz" data-id=42>UZIVATEL</a>: <b>     BOD      </b>""",
             """<a href="https://nyx.cz" data-id=42>UZIVATEL</a>: <b> <em>BOD</em> </b>""",
             """<a href="https://nyx.cz" data-id=42>UZIVATEL</a>: <b><em> BOD </em></b>""",
-        ]
+        ],
     )
     fun `parsing single point`(postContent: String) {
         val pointData = postContent.parsePointData()
@@ -57,7 +61,7 @@ internal class PointsHandlersKtTest {
             "<a href=\"https://nyx.cz\" data-id=42>UZIVATEL</a>:\n <b>BOD</b>",
             """<a href="https://nyx.cz">UZIVATEL</a>: <b>BOD</b>""",
             "UZIVATEL: <B>BOD</B>",
-        ]
+        ],
     )
     fun `not parsing invalid point`(postContent: String) {
         val pointData = postContent.parsePointData()
@@ -74,7 +78,7 @@ internal class PointsHandlersKtTest {
             "Text before\n<a href=\"https://nyx.cz\" data-id=42>UZIVATEL</a>: <b>BOD</b>\n\n<a href=\"https://nyx.cz\" data-id=43>UZIVATEL</a>: <b>BOD</b>",
             "<a href=\"https://nyx.cz\" data-id=42>UZIVATEL</a>: <b>BOD</b>\n\n<a href=\"https://nyx.cz\" data-id=43>UZIVATEL</a>: <b>BOD</b>\nText after",
             "Text before\n<a href=\"https://nyx.cz\" data-id=42>UZIVATEL</a>: <b>BOD</b>\nText in the middle\n<a href=\"https://nyx.cz\" data-id=43>UZIVATEL</a>: <b>BOD</b>\ntext after",
-        ]
+        ],
     )
     fun `parsing multiple points`(postContent: String) {
         val pointData = postContent.parsePointData()

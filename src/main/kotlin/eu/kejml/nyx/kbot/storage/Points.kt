@@ -6,8 +6,13 @@ import kotlinx.datetime.LocalDateTime
 import kotlinx.datetime.toLocalDateTime
 import org.slf4j.LoggerFactory
 import software.amazon.awssdk.services.dynamodb.DynamoDbClient
-import software.amazon.awssdk.services.dynamodb.model.*
-
+import software.amazon.awssdk.services.dynamodb.model.AttributeValue
+import software.amazon.awssdk.services.dynamodb.model.DeleteItemRequest
+import software.amazon.awssdk.services.dynamodb.model.DynamoDbException
+import software.amazon.awssdk.services.dynamodb.model.GetItemRequest
+import software.amazon.awssdk.services.dynamodb.model.PutItemRequest
+import software.amazon.awssdk.services.dynamodb.model.QueryRequest
+import software.amazon.awssdk.services.dynamodb.model.ResourceNotFoundException
 
 const val tableName = "points"
 
@@ -38,14 +43,15 @@ object Points {
     private val log = LoggerFactory.getLogger(this.javaClass)
 
     internal fun getLastPostId(discussionId: Long): Long? {
-
         val request = QueryRequest.builder()
             .tableName(tableName)
             .indexName("lastId")
             .keyConditionExpression("discussionId = :discussionId")
-            .expressionAttributeValues(mapOf(
-                ":discussionId" to AttributeValue.builder().n(discussionId.toString()).build()
-            ))
+            .expressionAttributeValues(
+                mapOf(
+                    ":discussionId" to AttributeValue.builder().n(discussionId.toString()).build(),
+                ),
+            )
             .scanIndexForward(false)
             .limit(1)
             .build()
@@ -124,11 +130,13 @@ object Points {
             .tableName(tableName)
             .indexName("dateTimeIndex")
             .keyConditionExpression("discussionId = :discussionId AND givenDateTime BETWEEN :dateFrom AND :dateTo")
-            .expressionAttributeValues(mapOf(
-                ":discussionId" to AttributeValue.builder().n(discussionId.toString()).build(),
-                ":dateFrom" to AttributeValue.builder().s(from.toString()).build(),
-                ":dateTo" to AttributeValue.builder().s(to.toString()).build(),
-            ))
+            .expressionAttributeValues(
+                mapOf(
+                    ":discussionId" to AttributeValue.builder().n(discussionId.toString()).build(),
+                    ":dateFrom" to AttributeValue.builder().s(from.toString()).build(),
+                    ":dateTo" to AttributeValue.builder().s(to.toString()).build(),
+                ),
+            )
             .build()
 
         return client.queryPaginator(request).items()?.let { item -> item.map { fromAttributeValues(it) } }?.toList() ?: emptyList()
