@@ -1,5 +1,5 @@
 {
-  "app": "..\\gradlew.bat :cdk:run",
+  "app": "npm run synth",
   "watch": {
     "include": [
       "**"

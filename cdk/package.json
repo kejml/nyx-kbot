@@ -4,7 +4,8 @@
   "description": "CDK infrastructure for Kbot",
   "scripts": {
     "build": "gradle build",
-    "cdk": "cdk"
+    "cdk": "cdk",
+    "synth": "../gradlew :cdk:run"
   },
   "devDependencies": {
     "aws-cdk": "^2.114.1"
