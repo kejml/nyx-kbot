@@ -51,7 +51,7 @@ The codebase follows a serverless architecture with individual Lambda functions:
 - Parses HTML content from discussions to extract point awards using regex
 - Validates points by checking if referenced posts still exist
 - Generates monthly and yearly summaries with formatted leaderboards
-- Automatically rates helpful posts
+- Automatically rates posts with points when they are counted in
 
 ## Configuration
 
