@@ -131,13 +131,17 @@ class KbotStack(scope: Construct, id: String, props: StackProps) : Stack(scope, 
         pointsTable.grantReadData(nyxTestFunction)
 
         // EventBridge rules for scheduled functions
+        // Note: Adding timestamp in description forces CDK to detect drift and update rules
+        val deploymentTime = java.time.Instant.now().toString()
 
         Rule.Builder.create(this, "HourlyUpdateRule")
+            .description("Hourly update rule - Last deployed: $deploymentTime")
             .schedule(Schedule.rate(Duration.hours(1)))
             .targets(listOf(LambdaFunction(hourlyUpdateFunction)))
             .build()
             
         Rule.Builder.create(this, "MonthlySummaryRule")
+            .description("Monthly summary rule - Last deployed: $deploymentTime")
             .schedule(Schedule.cron(CronOptions.builder()
                 .minute("10")
                 .hour("01")
@@ -148,6 +152,7 @@ class KbotStack(scope: Construct, id: String, props: StackProps) : Stack(scope, 
             .build()
             
         Rule.Builder.create(this, "YearlySummaryRule")
+            .description("Yearly summary rule - Last deployed: $deploymentTime")
             .schedule(Schedule.cron(CronOptions.builder()
                 .minute("10")
                 .hour("01")
