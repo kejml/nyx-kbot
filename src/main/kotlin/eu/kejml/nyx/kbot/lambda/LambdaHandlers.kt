@@ -18,11 +18,13 @@ import kotlinx.datetime.toLocalDateTime
 import kotlin.time.Duration.Companion.days
 
 class HourlyUpdateHandler : RequestHandler<ScheduledEvent, String> {
-//    private val discussionId = 11354L // PROD
+    // PROD
+    private val discussionId = 11354L
+    private val contentId = 68695L
 
     // SANDBOX
-    private val discussionId = 20310L
-    private val contentId = 68692L
+//    private val discussionId = 20310L
+//    private val contentId = 68692L
 
     override fun handleRequest(input: ScheduledEvent, context: Context): String {
         context.logger.log("Starting hourly points update")
@@ -41,8 +43,8 @@ class HourlyUpdateHandler : RequestHandler<ScheduledEvent, String> {
 }
 
 class MonthlySummaryHandler : RequestHandler<ScheduledEvent, String> {
-//    private val discussionId = 11354L // PROD
-    private val discussionId = 20310L // SANDBOX
+    private val discussionId = 11354L // PROD
+//    private val discussionId = 20310L // SANDBOX
 
     override fun handleRequest(input: ScheduledEvent, context: Context): String {
         context.logger.log("Starting monthly summary")
@@ -56,10 +58,11 @@ class MonthlySummaryHandler : RequestHandler<ScheduledEvent, String> {
 
 class YearlySummaryHandler : RequestHandler<ScheduledEvent, String> {
     // PROD
-//    private val discussionId = 11354L
+    private val discussionId = 11354L
+    private val contentId = null
     // SANDBOX
-    private val discussionId = 20310L
-    private val contentId = 54996L
+//    private val discussionId = 20310L
+//    private val contentId = 54996L
 
     override fun handleRequest(input: ScheduledEvent, context: Context): String {
         context.logger.log("Starting yearly summary")

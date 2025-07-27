@@ -1,6 +1,5 @@
 package eu.kejml.nyx.kbot.support
 
-import eu.kejml.nyx.kbot.storage.updateHomeHallOfFame
 import io.ktor.client.*
 import io.ktor.client.call.*
 import io.ktor.client.request.*
@@ -37,13 +36,13 @@ fun nyxTest(): String {
 
         val yesterday = Clock.System.now().minus(1.days).toLocalDateTime(TimeZone.UTC)
         // postYearlySummary(discussionId, yesterday.year)
-        val res = updateHomeHallOfFame(discussionId, contentId, yesterday.year)
+        // val res = updateHomeHallOfFame(discussionId, contentId, yesterday.year)
 
         // TODO more points in one post? Point surrounded by text?
 //        discussion.posts.filter {
 //            it.content.contains(Regex("<(b|strong)>(<em.*>)?bod(</em>)?</(b|strong)>", RegexOption.IGNORE_CASE))
 //        }.toString()
 //        data
-        "Done $res"
+        "Yesterday was $yesterday"
     }
 }
