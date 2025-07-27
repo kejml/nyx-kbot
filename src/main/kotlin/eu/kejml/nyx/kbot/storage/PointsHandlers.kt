@@ -76,17 +76,21 @@ fun readPointsFromDiscussion(discussionId: Long): Int = runBlocking {
     points
 }
 
-fun List<Point>.validatePointsAndRemoveInvalid(): List<Point> = runBlocking {
-    filter { point ->
-        val data = NyxClient.getDiscussion(point.discussionId, DiscussionQueryParams(fromId = point.postId + 1, discussionOrder = DiscussionOrder.OLDER_THAN))
-        val posts = json.decodeFromString<Discussion>(data).posts
-        val result = posts.first().id == point.postId
-        if (!result) {
-            log.info("Removing point $point - not found in the discussion anymore. (Found only posts with ids: ${posts.map { it.id }}")
-            Points.removePoint(point)
+fun List<Point>.validatePointsAndRemoveInvalid(validatePoints: Boolean): List<Point> = if (validatePoints) {
+    runBlocking {
+        filter { point ->
+            val data = NyxClient.getDiscussion(point.discussionId, DiscussionQueryParams(fromId = point.postId + 1, discussionOrder = DiscussionOrder.OLDER_THAN))
+            val posts = json.decodeFromString<Discussion>(data).posts
+            val result = posts.first().id == point.postId
+            if (!result) {
+                log.info("Removing point $point - not found in the discussion anymore. (Found only posts with ids: ${posts.map { it.id }}")
+                Points.removePoint(point)
+            }
+            result
         }
-        result
     }
+} else {
+    this
 }
 
 fun postYearlySummary(discussionId: Long, year: Int) {
@@ -156,6 +160,52 @@ fun updateHome(discussionId: Long, contentId: Long, year: Int) {
     )
 }
 
+fun updateHomeHallOfFame(discussionId: Long, contentId: Long?, year: Int) {
+    if (contentId == null) {
+        log.info("No content id provided, skipping hall of fame")
+        return
+    }
+    log.info("Getting data for year $year")
+    val pointsTable = renderPointsTable(
+        discussionId = discussionId,
+        from = LocalDateTime(year, 1, 1, 0, 0),
+        to = LocalDateTime(year, 12, 31, 23, 59, 59, 999),
+        validatePoints = false,
+    )
+
+    val hallOfFame = (2023 until year).reversed().map { y ->
+        log.info("Getting data for year $y")
+        y to renderPointsTable(
+            discussionId = discussionId,
+            from = LocalDateTime(y, 1, 1, 0, 0),
+            to = LocalDateTime(y, 12, 31, 23, 59, 59, 999),
+            limitDisplayedPlaces = 5,
+            validatePoints = false,
+        )
+    }.joinToString("\n") {
+        """
+            <h3>${it.first}</h3>
+            <br>
+            ${it.second}
+        """.trimIndent()
+    }
+
+    log.info("Will post results")
+
+    return postHeader(
+        """
+            <h2>Výsledky za rok $year</h2>
+            <br>
+        """.trimIndent()
+            .plus(pointsTable)
+            .plus("<br>")
+            .plus("<h2>Síň slávy</h2>")
+            .plus(hallOfFame),
+        discussionId,
+        contentId,
+    )
+}
+
 fun postHeader(body: String, discussionId: Long, contentId: Long) {
     return runBlocking {
         NyxClient.updateHome(discussionId, contentId, body)
@@ -179,6 +229,7 @@ private fun renderPointsTable(
     from: LocalDateTime,
     to: LocalDateTime,
     limitDisplayedPlaces: Int = Int.MAX_VALUE,
+    validatePoints: Boolean = true,
 ): String {
     var globalOrder = 1 // Good enough now
 
@@ -187,7 +238,7 @@ private fun renderPointsTable(
         from,
         to,
     )
-        .validatePointsAndRemoveInvalid()
+        .validatePointsAndRemoveInvalid(validatePoints)
         .filter { it.givenTo != null }
         .groupBy { it.givenTo!! }
         .map { it.key to it.value }

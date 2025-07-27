@@ -1,14 +1,16 @@
 package eu.kejml.nyx.kbot.support
 
-import eu.kejml.nyx.kbot.api.Discussion
-import eu.kejml.nyx.kbot.api.DiscussionQueryParams
-import eu.kejml.nyx.kbot.api.NyxClient
+import eu.kejml.nyx.kbot.storage.updateHomeHallOfFame
 import io.ktor.client.*
 import io.ktor.client.call.*
 import io.ktor.client.request.*
 import io.ktor.http.*
 import kotlinx.coroutines.runBlocking
+import kotlinx.datetime.Clock
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.toLocalDateTime
 import kotlinx.serialization.json.Json
+import kotlin.time.Duration.Companion.days
 
 suspend fun main() {
     val client = HttpClient()
@@ -24,17 +26,24 @@ suspend fun main() {
 
 private val json = Json { ignoreUnknownKeys = true }
 
-private val discussionId = 20310L // SANDBOX
+// SANDBOX
+private val discussionId = 20310L
+private val contentId = 54996L
 
 fun nyxTest(): String {
     return runBlocking {
-        val data = NyxClient.getDiscussion(discussionId, DiscussionQueryParams(null, 1))
-        val discussion = json.decodeFromString<Discussion>(data)
+//        val data = NyxClient.getDiscussion(discussionId, DiscussionQueryParams(null, 1))
+//        val discussion = json.decodeFromString<Discussion>(data)
+
+        val yesterday = Clock.System.now().minus(1.days).toLocalDateTime(TimeZone.UTC)
+        // postYearlySummary(discussionId, yesterday.year)
+        val res = updateHomeHallOfFame(discussionId, contentId, yesterday.year)
 
         // TODO more points in one post? Point surrounded by text?
-        discussion.posts.filter {
-            it.content.contains(Regex("<(b|strong)>(<em.*>)?bod(</em>)?</(b|strong)>", RegexOption.IGNORE_CASE))
-        }.toString()
-        data
+//        discussion.posts.filter {
+//            it.content.contains(Regex("<(b|strong)>(<em.*>)?bod(</em>)?</(b|strong)>", RegexOption.IGNORE_CASE))
+//        }.toString()
+//        data
+        "Done $res"
     }
 }

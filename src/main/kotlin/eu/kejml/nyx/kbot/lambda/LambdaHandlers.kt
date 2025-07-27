@@ -9,6 +9,7 @@ import eu.kejml.nyx.kbot.storage.postMonthlySummary
 import eu.kejml.nyx.kbot.storage.postYearlySummary
 import eu.kejml.nyx.kbot.storage.readPointsFromDiscussion
 import eu.kejml.nyx.kbot.storage.updateHome
+import eu.kejml.nyx.kbot.storage.updateHomeHallOfFame
 import eu.kejml.nyx.kbot.support.nyxTest
 import kotlinx.coroutines.runBlocking
 import kotlinx.datetime.Clock
@@ -54,14 +55,18 @@ class MonthlySummaryHandler : RequestHandler<ScheduledEvent, String> {
 }
 
 class YearlySummaryHandler : RequestHandler<ScheduledEvent, String> {
-//    private val discussionId = 11354L //
-    private val discussionId = 20310L // SANDBOX// PROD
+    // PROD
+//    private val discussionId = 11354L
+    // SANDBOX
+    private val discussionId = 20310L
+    private val contentId = 54996L
 
     override fun handleRequest(input: ScheduledEvent, context: Context): String {
         context.logger.log("Starting yearly summary")
         return runBlocking {
             val yesterday = Clock.System.now().minus(1.days).toLocalDateTime(TimeZone.UTC)
             postYearlySummary(discussionId, yesterday.year)
+            updateHomeHallOfFame(discussionId, contentId, yesterday.year)
             "Yearly summary posted"
         }
     }

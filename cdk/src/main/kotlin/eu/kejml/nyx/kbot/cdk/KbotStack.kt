@@ -1,8 +1,7 @@
 package eu.kejml.nyx.kbot.cdk
 
 import software.amazon.awscdk.*
-import software.amazon.awscdk.services.apigateway.LambdaIntegration
-import software.amazon.awscdk.services.apigateway.RestApi
+import software.amazon.awscdk.services.apigateway.*
 import software.amazon.awscdk.services.dynamodb.*
 import software.amazon.awscdk.services.events.CronOptions
 import software.amazon.awscdk.services.events.Rule
@@ -197,8 +196,28 @@ class KbotStack(scope: Construct, id: String, props: StackProps) : Stack(scope, 
         val helloIntegration = LambdaIntegration(helloFunction)
         api.root.addResource("hello").addMethod("GET", helloIntegration)
         
-        val nyxTestIntegration = LambdaIntegration(nyxTestFunction)
-        api.root.addResource("nyx-test").addMethod("GET", nyxTestIntegration)
+        val nyxTestIntegration = LambdaIntegration(nyxTestFunction, 
+            LambdaIntegrationOptions.builder()
+                .requestTemplates(mapOf(
+                    "application/json" to "{\n  \"headers\": {\n    \"X-Amz-Invocation-Type\": \"Event\"\n  }\n}"
+                ))
+                .integrationResponses(listOf(
+                    IntegrationResponse.builder()
+                        .statusCode("202")
+                        .responseTemplates(mapOf(
+                            "application/json" to "{\"message\": \"Request accepted for processing\"}"
+                        ))
+                        .build()
+                ))
+                .build())
+        api.root.addResource("nyx-test").addMethod("GET", nyxTestIntegration,
+            MethodOptions.builder()
+                .methodResponses(listOf(
+                    MethodResponse.builder()
+                        .statusCode("202")
+                        .build()
+                ))
+                .build())
 
         // Outputs
         CfnOutput.Builder.create(this, "ApiUrl")
