@@ -10,7 +10,7 @@ plugins {
 group = "eu.kejml"
 version = "1.0-SNAPSHOT"
 
-val ktorVersion by extra("2.3.7")
+val ktorVersion by extra("2.3.12")
 val awsLambdaVersion by extra("1.2.2")
 val awsSdkVersion by extra("2.21.29")
 
