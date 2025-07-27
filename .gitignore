@@ -114,3 +114,8 @@ gradle-app.setting
 hs_err_pid*
 
 src/main/resources/secret.properties
+
+/cdk/cdk.out/
+/cdk/node_modules/
+/.claude/
+/backup/
