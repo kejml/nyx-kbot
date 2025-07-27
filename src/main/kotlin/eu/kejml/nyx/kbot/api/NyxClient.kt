@@ -94,6 +94,6 @@ object NyxClient {
                 ),
             )
         }
-        return if (response.status.isSuccess()) response.body() else throw IllegalStateException("Unexpected response from nyx.cz: $response")
+        return if (response.status.isSuccess()) response.body() else throw IllegalStateException("Unexpected response from nyx.cz: $response, ${response.body<String>()}")
     }
 }
