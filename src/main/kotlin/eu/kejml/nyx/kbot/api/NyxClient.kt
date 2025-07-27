@@ -54,6 +54,20 @@ object NyxClient {
         return nyxGet("discussion/$id${params?.toUrl() ?: ""}")
     }
 
+    suspend fun getHome(id: Long): String {
+        return nyxGet("discussion/$id/content/home")
+    }
+
+    suspend fun updateHome(discussionId: Long, contentId: Long, content: String): String {
+        return nyxPost(
+            endpoint = "discussion/$discussionId/content/$contentId/save",
+            content = mapOf(
+                "content" to content,
+                "format" to PostFormat.HTML.apiString,
+            ),
+        )
+    }
+
     suspend fun postDiscussion(discussionId: Long, content: String, format: PostFormat = PostFormat.HTML): String {
         return nyxPost(
             "discussion/$discussionId/send/text",

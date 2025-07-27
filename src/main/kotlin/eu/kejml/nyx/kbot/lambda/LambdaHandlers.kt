@@ -8,6 +8,7 @@ import com.amazonaws.services.lambda.runtime.events.ScheduledEvent
 import eu.kejml.nyx.kbot.storage.postMonthlySummary
 import eu.kejml.nyx.kbot.storage.postYearlySummary
 import eu.kejml.nyx.kbot.storage.readPointsFromDiscussion
+import eu.kejml.nyx.kbot.storage.updateHome
 import eu.kejml.nyx.kbot.support.nyxTest
 import kotlinx.coroutines.runBlocking
 import kotlinx.datetime.Clock
@@ -17,12 +18,19 @@ import kotlin.time.Duration.Companion.days
 
 class HourlyUpdateHandler : RequestHandler<ScheduledEvent, String> {
 //    private val discussionId = 11354L // PROD
-    private val discussionId = 20310L // SANDBOX
+
+    // SANDBOX
+    private val discussionId = 20310L
+    private val contentId = 68692L
 
     override fun handleRequest(input: ScheduledEvent, context: Context): String {
         context.logger.log("Starting hourly points update")
         return runBlocking {
-            readPointsFromDiscussion(discussionId)
+            val readResult = readPointsFromDiscussion(discussionId)
+            val today = Clock.System.now().minus(1.days).toLocalDateTime(TimeZone.UTC)
+            val updateResult = updateHome(discussionId, contentId, today.year)
+
+            readResult + "\n\n" + updateResult
         }
     }
 }

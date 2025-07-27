@@ -10,7 +10,6 @@ import kotlinx.datetime.Month
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toInstant
 import kotlinx.datetime.toLocalDateTime
-import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.json.Json
 import org.slf4j.LoggerFactory
 import java.time.format.TextStyle
@@ -136,6 +135,30 @@ fun postMonthlySummary(discussionId: Long, month: Month, year: Int) {
             .plus(pointsTableYear),
         discussionId,
     )
+}
+
+fun updateHome(discussionId: Long, contentId: Long, year: Int) {
+    val pointsTable = renderPointsTable(
+        discussionId,
+        LocalDateTime(year, 1, 1, 0, 0),
+        LocalDateTime(year, 12, 31, 23, 59, 59, 999),
+    )
+    postHeader(
+        body =
+        """
+            <h3>Průběžné bodování v roce $year</h3>
+            <br>
+        """.trimIndent()
+            .plus(pointsTable),
+        discussionId = discussionId,
+        contentId = contentId,
+    )
+}
+
+fun postHeader(body: String, discussionId: Long, contentId: Long) {
+    return runBlocking {
+        NyxClient.updateHome(discussionId, contentId, body)
+    }
 }
 
 fun postSummary(body: String, discussionId: Long) {
