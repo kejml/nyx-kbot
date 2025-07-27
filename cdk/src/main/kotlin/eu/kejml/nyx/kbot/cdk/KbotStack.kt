@@ -8,6 +8,8 @@ import software.amazon.awscdk.services.events.CronOptions
 import software.amazon.awscdk.services.events.Rule
 import software.amazon.awscdk.services.events.Schedule
 import software.amazon.awscdk.services.events.targets.LambdaFunction
+import software.amazon.awscdk.services.iam.Effect
+import software.amazon.awscdk.services.iam.PolicyStatement
 import software.amazon.awscdk.services.lambda.Code
 import software.amazon.awscdk.services.lambda.Function
 import software.amazon.awscdk.services.lambda.Runtime
@@ -129,6 +131,30 @@ class KbotStack(scope: Construct, id: String, props: StackProps) : Stack(scope, 
         pointsTable.grantReadWriteData(yearlySummaryFunction)
         pointsTable.grantReadData(helloFunction)
         pointsTable.grantReadData(nyxTestFunction)
+        
+        // Additional permissions for existing table indexes (needed when using Table.fromTableName)
+        val tableArn = "arn:aws:dynamodb:${this.region}:${this.account}:table/points"
+        val indexPolicy = PolicyStatement.Builder.create()
+            .effect(Effect.ALLOW)
+            .actions(listOf(
+                "dynamodb:Query",
+                "dynamodb:GetItem",
+                "dynamodb:PutItem",
+                "dynamodb:UpdateItem",
+                "dynamodb:DeleteItem",
+                "dynamodb:Scan"
+            ))
+            .resources(listOf(
+                tableArn,
+                "$tableArn/index/*"
+            ))
+            .build()
+            
+        hourlyUpdateFunction.addToRolePolicy(indexPolicy)
+        monthlySummaryFunction.addToRolePolicy(indexPolicy)
+        yearlySummaryFunction.addToRolePolicy(indexPolicy)
+        helloFunction.addToRolePolicy(indexPolicy)
+        nyxTestFunction.addToRolePolicy(indexPolicy)
 
         // EventBridge rules for scheduled functions
         // Note: Adding timestamp in description forces CDK to detect drift and update rules
