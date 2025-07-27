@@ -1,0 +1,12 @@
+{
+  "name": "kbot-cdk",
+  "version": "1.0.0",
+  "description": "CDK infrastructure for Kbot",
+  "scripts": {
+    "build": "gradle build",
+    "cdk": "cdk"
+  },
+  "devDependencies": {
+    "aws-cdk": "^2.114.1"
+  }
+}

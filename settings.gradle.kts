@@ -1,5 +1,6 @@
 
 rootProject.name = "nyx-kbot"
+include("cdk")
 
 pluginManagement {
     resolutionStrategy {

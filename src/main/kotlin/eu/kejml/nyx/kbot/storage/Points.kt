@@ -1,7 +1,5 @@
 package eu.kejml.nyx.kbot.storage
 
-import io.kotless.PermissionLevel
-import io.kotless.dsl.cloud.aws.DynamoDBTable
 import kotlinx.datetime.LocalDateTime
 import kotlinx.datetime.toLocalDateTime
 import org.slf4j.LoggerFactory
@@ -37,7 +35,6 @@ fun fromAttributeValues(input: Map<String, AttributeValue>): Point {
     )
 }
 
-@DynamoDBTable(tableName, PermissionLevel.ReadWrite)
 object Points {
     private val client = DynamoDbClient.builder().build()
     private val log = LoggerFactory.getLogger(this.javaClass)

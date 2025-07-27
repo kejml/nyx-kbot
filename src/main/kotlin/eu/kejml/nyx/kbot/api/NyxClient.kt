@@ -4,10 +4,11 @@ import io.ktor.client.*
 import io.ktor.client.call.*
 import io.ktor.client.request.*
 import io.ktor.client.request.forms.*
-import io.ktor.client.statement.*
 import io.ktor.http.*
 import org.slf4j.LoggerFactory
 import java.io.InputStream
+import java.net.URLEncoder
+import java.nio.charset.StandardCharsets
 import java.util.*
 
 enum class DiscussionOrder(val apiString: String) {
@@ -35,7 +36,7 @@ class DiscussionQueryParams(
         if (isEmpty()) return ""
 
         return listOfNotNull(
-            text?.let { "text=$it" },
+            text?.let { "text=${URLEncoder.encode(it, StandardCharsets.UTF_8)}" },
             fromId?.let { "from_id=$it&order=${discussionOrder.apiString}" },
         ).joinToString(separator = "&", prefix = "?")
     }
@@ -70,27 +71,29 @@ object NyxClient {
     private suspend fun nyxGet(endpoint: String): String {
         val urlString = "https://nyx.cz/api/$endpoint"
         log.info(urlString)
-        val response = client.get<HttpResponse>(urlString) {
+        val response = client.get(urlString) {
             headers {
                 this.append("Authorization", "Bearer $nyxToken")
             }
         }
-        return if (response.status.isSuccess()) response.receive() else throw IllegalStateException("Unexpected response from nyx.cz: $response")
+        return if (response.status.isSuccess()) response.body() else throw IllegalStateException("Unexpected response from nyx.cz: $response")
     }
 
     private suspend fun nyxPost(endpoint: String, content: Map<String, String> = emptyMap()): String {
         val urlString = "https://nyx.cz/api/$endpoint"
         log.info(urlString)
-        val response = client.post<HttpResponse>(urlString) {
+        val response = client.post(urlString) {
             headers {
                 this.append("Authorization", "Bearer $nyxToken")
             }
-            body = FormDataContent(
-                Parameters.build {
-                    content.map { append(it.key, it.value) }
-                },
+            setBody(
+                FormDataContent(
+                    Parameters.build {
+                        content.map { append(it.key, it.value) }
+                    },
+                ),
             )
         }
-        return if (response.status.isSuccess()) response.receive() else throw IllegalStateException("Unexpected response from nyx.cz: $response")
+        return if (response.status.isSuccess()) response.body() else throw IllegalStateException("Unexpected response from nyx.cz: $response")
     }
 }
