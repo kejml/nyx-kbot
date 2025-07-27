@@ -144,9 +144,10 @@ fun postMonthlySummary(discussionId: Long, month: Month, year: Int) {
 
 fun updateHome(discussionId: Long, contentId: Long, year: Int) {
     val pointsTable = renderPointsTable(
-        discussionId,
-        LocalDateTime(year, 1, 1, 0, 0),
-        LocalDateTime(year, 12, 31, 23, 59, 59, 999),
+        discussionId = discussionId,
+        from = LocalDateTime(year, 1, 1, 0, 0),
+        to = LocalDateTime(year, 12, 31, 23, 59, 59, 999),
+        validatePoints = false,
     )
     postHeader(
         body =
