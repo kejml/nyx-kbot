@@ -26,11 +26,15 @@ class HourlyUpdateHandler : RequestHandler<ScheduledEvent, String> {
     override fun handleRequest(input: ScheduledEvent, context: Context): String {
         context.logger.log("Starting hourly points update")
         return runBlocking {
-            val readResult = readPointsFromDiscussion(discussionId)
-            val today = Clock.System.now().minus(1.days).toLocalDateTime(TimeZone.UTC)
-            val updateResult = updateHome(discussionId, contentId, today.year)
+            val foundPoints = readPointsFromDiscussion(discussionId)
+            val updateResult = if (foundPoints > 0) {
+                val today = Clock.System.now().minus(1.days).toLocalDateTime(TimeZone.UTC)
+                updateHome(discussionId, contentId, today.year)
+            } else {
+                null
+            }
 
-            readResult + "\n\n" + updateResult
+            "$foundPoints - $updateResult"
         }
     }
 }

@@ -45,14 +45,14 @@ internal fun String.parsePointData(): List<QuestionIdGivenTo> {
         }.toList()
 }
 
-fun readPointsFromDiscussion(discussionId: Long): String = runBlocking {
+fun readPointsFromDiscussion(discussionId: Long): Int = runBlocking {
     log.info("Saving posts")
     val fromId = Points.getLastPostId(discussionId) ?: 1L
     val data = NyxClient.getDiscussion(discussionId, DiscussionQueryParams("bod -bodování", fromId))
     val discussion = json.decodeFromString<Discussion>(data)
     log.info(discussion.toString())
     val saved = mutableListOf<Long>()
-    discussion.posts
+    val points = discussion.posts
         .filter { it.id > fromId }
         .map { post ->
             try {
@@ -65,14 +65,15 @@ fun readPointsFromDiscussion(discussionId: Long): String = runBlocking {
             }
         }
         .flatten()
-        .forEach {
+        .map {
             saved.add(it.postId)
             Points.addPoint(it)
             NyxClient.ratePost(discussionId, it.postId)
         }
+        .count()
     val logMessage = "Done, latest index was $fromId, saved ${saved.size} new points (${saved.joinToString(", ")})"
     log.info(logMessage)
-    logMessage
+    points
 }
 
 fun List<Point>.validatePointsAndRemoveInvalid(): List<Point> = runBlocking {
