@@ -200,7 +200,7 @@ private fun renderPointsTable(
             """
                 ${determineOrder(numberOfUsers, globalOrder).padEndHtml(27)}
                 ${userAndPoints.userName.padEndHtml(28)}
-                ${numToUserPointsMap.key} ${userAndPoints.points.toPointLinks()}
+                ${numToUserPointsMap.key}
                 <br>
             """.trimIndent()
         }
