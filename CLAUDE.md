@@ -53,6 +53,7 @@ The codebase follows a serverless architecture with individual Lambda functions:
 - Validates points by checking if referenced posts still exist
 - Generates monthly and yearly summaries with formatted leaderboards
 - Automatically rates posts with points when they are counted in
+- Regularly posts current standing to the discussion's home space
 
 ## Configuration
 
