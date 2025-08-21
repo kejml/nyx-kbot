@@ -87,7 +87,7 @@ class KbotStack(scope: Construct, id: String, props: StackProps) : Stack(scope, 
             .memorySize(512)
             .environment(lambdaEnvironment)
             .build()
-            
+
         val monthlySummaryFunction = Function.Builder.create(this, "MonthlySummaryFunction")
             .runtime(Runtime.JAVA_11)
             .handler("eu.kejml.nyx.kbot.lambda.MonthlySummaryHandler")
@@ -96,7 +96,7 @@ class KbotStack(scope: Construct, id: String, props: StackProps) : Stack(scope, 
             .memorySize(512)
             .environment(lambdaEnvironment)
             .build()
-            
+
         val yearlySummaryFunction = Function.Builder.create(this, "YearlySummaryFunction")
             .runtime(Runtime.JAVA_11)
             .handler("eu.kejml.nyx.kbot.lambda.YearlySummaryHandler")
@@ -105,7 +105,16 @@ class KbotStack(scope: Construct, id: String, props: StackProps) : Stack(scope, 
             .memorySize(512)
             .environment(lambdaEnvironment)
             .build()
-            
+
+        val updateHomeFunction = Function.Builder.create(this, "UpdatedHomeFunction")
+            .runtime(Runtime.JAVA_11)
+            .handler("eu.kejml.nyx.kbot.lambda.UpdatedHomeHandler")
+            .code(Code.fromAsset("../build/libs/nyx-kbot-1.0-SNAPSHOT-all.jar"))
+            .timeout(Duration.minutes(15))
+            .memorySize(512)
+            .environment(lambdaEnvironment)
+            .build()
+
         val helloFunction = Function.Builder.create(this, "HelloFunction")
             .runtime(Runtime.JAVA_11)
             .handler("eu.kejml.nyx.kbot.lambda.HelloHandler")
@@ -128,6 +137,7 @@ class KbotStack(scope: Construct, id: String, props: StackProps) : Stack(scope, 
         pointsTable.grantReadWriteData(hourlyUpdateFunction)
         pointsTable.grantReadWriteData(monthlySummaryFunction)
         pointsTable.grantReadWriteData(yearlySummaryFunction)
+        pointsTable.grantReadWriteData(updateHomeFunction)
         pointsTable.grantReadData(helloFunction)
         pointsTable.grantReadData(nyxTestFunction)
         
@@ -152,6 +162,7 @@ class KbotStack(scope: Construct, id: String, props: StackProps) : Stack(scope, 
         hourlyUpdateFunction.addToRolePolicy(indexPolicy)
         monthlySummaryFunction.addToRolePolicy(indexPolicy)
         yearlySummaryFunction.addToRolePolicy(indexPolicy)
+        updateHomeFunction.addToRolePolicy(indexPolicy)
         helloFunction.addToRolePolicy(indexPolicy)
         nyxTestFunction.addToRolePolicy(indexPolicy)
 
@@ -164,7 +175,7 @@ class KbotStack(scope: Construct, id: String, props: StackProps) : Stack(scope, 
             .schedule(Schedule.rate(Duration.hours(1)))
             .targets(listOf(LambdaFunction(hourlyUpdateFunction)))
             .build()
-            
+
         Rule.Builder.create(this, "MonthlySummaryRule")
             .description("Monthly summary rule - Last deployed: $deploymentTime")
             .schedule(Schedule.cron(CronOptions.builder()
@@ -175,7 +186,7 @@ class KbotStack(scope: Construct, id: String, props: StackProps) : Stack(scope, 
                 .build()))
             .targets(listOf(LambdaFunction(monthlySummaryFunction)))
             .build()
-            
+
         Rule.Builder.create(this, "YearlySummaryRule")
             .description("Yearly summary rule - Last deployed: $deploymentTime")
             .schedule(Schedule.cron(CronOptions.builder()
@@ -185,6 +196,16 @@ class KbotStack(scope: Construct, id: String, props: StackProps) : Stack(scope, 
                 .month("1")
                 .build()))
             .targets(listOf(LambdaFunction(yearlySummaryFunction)))
+            .build()
+
+        Rule.Builder.create(this, "UpdatedHomeHandler")
+            .description("Updated home rule - Last deployed: $deploymentTime")
+            .schedule(Schedule.cron(CronOptions.builder()
+                .minute("15")
+                .hour("4")
+                .weekDay("MON")
+                .build()))
+            .targets(listOf(LambdaFunction(updateHomeFunction)))
             .build()
 
         // API Gateway

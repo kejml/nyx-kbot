@@ -29,6 +29,7 @@ The codebase follows a serverless architecture with individual Lambda functions:
   - `HourlyUpdateHandler` - Scheduled hourly points update
   - `MonthlySummaryHandler` - Monthly summary generation
   - `YearlySummaryHandler` - Yearly summary generation  
+  - `UpdateHomeHandler` - Update current scores on the discussion`s home
   - `HelloHandler` - Test endpoint at `/hello`
   - `NyxTestHandler` - Debug endpoint at `/nyx-test`
 - **lambda/ScheduledActions.kt** - Legacy object (deprecated, use handlers instead)

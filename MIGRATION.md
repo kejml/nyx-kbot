@@ -60,6 +60,7 @@ npx cdk deploy
 | HourlyUpdateHandler | `eu.kejml.nyx.kbot.lambda.HourlyUpdateHandler` | Every hour | Update points from discussion |
 | MonthlySummaryHandler | `eu.kejml.nyx.kbot.lambda.MonthlySummaryHandler` | 1st day, 01:10, months 2-12 | Post monthly summary |
 | YearlySummaryHandler | `eu.kejml.nyx.kbot.lambda.YearlySummaryHandler` | 1st day, 01:10, January | Post yearly summary |
+| UpdateHomeHandler| `eu.kejml.nyx.kbot.lambda.YearlySummaryHandler` | Every Monday 4:15 | Update current score on home |
 | HelloHandler | `eu.kejml.nyx.kbot.lambda.HelloHandler` | API Gateway `/hello` | Test endpoint |
 | NyxTestHandler | `eu.kejml.nyx.kbot.lambda.NyxTestHandler` | API Gateway `/nyx-test` | Debug endpoint |
 
