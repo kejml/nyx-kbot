@@ -41,9 +41,7 @@ class KbotStack(scope: Construct, id: String, props: StackProps) : Stack(scope, 
                 .name("questionId")
                 .type(AttributeType.NUMBER)
                 .build())
-            .billingMode(BillingMode.PROVISIONED)
-            .readCapacity(20)
-            .writeCapacity(20)
+            .billingMode(BillingMode.PAY_PER_REQUEST)
             .removalPolicy(RemovalPolicy.RETAIN)
             .build()
         
