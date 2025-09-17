@@ -68,7 +68,7 @@ class KbotStack(scope: Construct, id: String, props: StackProps) : Stack(scope, 
             .build())
             
         // Apply condition to the new table
-        (newTable.node.defaultChild as software.amazon.awscdk.services.dynamodb.CfnTable).cfnOptions.condition = shouldCreateTable
+        (newTable.node.defaultChild as CfnTable).cfnOptions.condition = shouldCreateTable
         
         // Always use Table.fromTableName for permissions - this works whether table exists or will be created
         // The table name "points" will be the same regardless of whether it's existing or newly created
