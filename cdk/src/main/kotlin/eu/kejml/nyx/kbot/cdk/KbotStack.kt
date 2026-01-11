@@ -201,7 +201,6 @@ class KbotStack(scope: Construct, id: String, props: StackProps) : Stack(scope, 
             .schedule(Schedule.cron(CronOptions.builder()
                 .minute("15")
                 .hour("4")
-                .weekDay("MON")
                 .build()))
             .targets(listOf(LambdaFunction(updateHomeFunction)))
             .build()
