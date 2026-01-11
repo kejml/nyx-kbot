@@ -78,7 +78,7 @@ class KbotStack(scope: Construct, id: String, props: StackProps) : Stack(scope, 
         )
         
         val hourlyUpdateFunction = Function.Builder.create(this, "HourlyUpdateFunction")
-            .runtime(Runtime.JAVA_11)
+            .runtime(Runtime.JAVA_21)
             .handler("eu.kejml.nyx.kbot.lambda.HourlyUpdateHandler")
             .code(Code.fromAsset("../build/libs/nyx-kbot-1.0-SNAPSHOT-all.jar"))
             .timeout(Duration.minutes(15))
@@ -87,7 +87,7 @@ class KbotStack(scope: Construct, id: String, props: StackProps) : Stack(scope, 
             .build()
 
         val monthlySummaryFunction = Function.Builder.create(this, "MonthlySummaryFunction")
-            .runtime(Runtime.JAVA_11)
+            .runtime(Runtime.JAVA_21)
             .handler("eu.kejml.nyx.kbot.lambda.MonthlySummaryHandler")
             .code(Code.fromAsset("../build/libs/nyx-kbot-1.0-SNAPSHOT-all.jar"))
             .timeout(Duration.minutes(15))
@@ -96,7 +96,7 @@ class KbotStack(scope: Construct, id: String, props: StackProps) : Stack(scope, 
             .build()
 
         val yearlySummaryFunction = Function.Builder.create(this, "YearlySummaryFunction")
-            .runtime(Runtime.JAVA_11)
+            .runtime(Runtime.JAVA_21)
             .handler("eu.kejml.nyx.kbot.lambda.YearlySummaryHandler")
             .code(Code.fromAsset("../build/libs/nyx-kbot-1.0-SNAPSHOT-all.jar"))
             .timeout(Duration.minutes(15))
@@ -105,7 +105,7 @@ class KbotStack(scope: Construct, id: String, props: StackProps) : Stack(scope, 
             .build()
 
         val updateHomeFunction = Function.Builder.create(this, "UpdatedHomeFunction")
-            .runtime(Runtime.JAVA_11)
+            .runtime(Runtime.JAVA_21)
             .handler("eu.kejml.nyx.kbot.lambda.UpdatedHomeHandler")
             .code(Code.fromAsset("../build/libs/nyx-kbot-1.0-SNAPSHOT-all.jar"))
             .timeout(Duration.minutes(15))
@@ -114,7 +114,7 @@ class KbotStack(scope: Construct, id: String, props: StackProps) : Stack(scope, 
             .build()
 
         val helloFunction = Function.Builder.create(this, "HelloFunction")
-            .runtime(Runtime.JAVA_11)
+            .runtime(Runtime.JAVA_21)
             .handler("eu.kejml.nyx.kbot.lambda.HelloHandler")
             .code(Code.fromAsset("../build/libs/nyx-kbot-1.0-SNAPSHOT-all.jar"))
             .timeout(Duration.seconds(30))
@@ -123,7 +123,7 @@ class KbotStack(scope: Construct, id: String, props: StackProps) : Stack(scope, 
             .build()
             
         val nyxTestFunction = Function.Builder.create(this, "NyxTestFunction")
-            .runtime(Runtime.JAVA_11)
+            .runtime(Runtime.JAVA_21)
             .handler("eu.kejml.nyx.kbot.lambda.NyxTestHandler")
             .code(Code.fromAsset("../build/libs/nyx-kbot-1.0-SNAPSHOT-all.jar"))
             .timeout(Duration.minutes(2))
