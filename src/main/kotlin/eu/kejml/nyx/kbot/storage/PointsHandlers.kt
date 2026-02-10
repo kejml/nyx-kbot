@@ -94,7 +94,7 @@ fun List<Point>.validatePointsAndRemoveInvalid(validatePoints: Boolean): List<Po
 }
 
 fun postYearlySummary(discussionId: Long, year: Int) {
-    val pointsTable = renderPointsTable(
+    val pointsTable = renderPointsPost(
         discussionId,
         LocalDateTime(year, 1, 1, 0, 0),
         LocalDateTime(year, 12, 31, 23, 59, 59, 999),
@@ -115,14 +115,14 @@ fun postMonthlySummary(discussionId: Long, month: Month, year: Int) {
 
     val monthString = month.getDisplayName(TextStyle.FULL_STANDALONE, Locale.forLanguageTag("cs"))
 
-    val pointsTableMonth = renderPointsTable(
+    val pointsTableMonth = renderPointsPost(
         discussionId,
         LocalDateTime(year, month, 1, 0, 0),
         LocalDateTime(year, month + 1, 1, 0, 0)
             .toInstant(TimeZone.UTC).minus(1.seconds).toLocalDateTime(TimeZone.UTC),
     )
 
-    val pointsTableYear = renderPointsTable(
+    val pointsTableYear = renderPointsPost(
         discussionId,
         LocalDateTime(year, 1, 1, 0, 0),
         LocalDateTime(year, month + 1, 1, 0, 0)
@@ -143,7 +143,7 @@ fun postMonthlySummary(discussionId: Long, month: Month, year: Int) {
 }
 
 fun updateHome(discussionId: Long, contentId: Long, year: Int) {
-    val pointsTable = renderPointsTableHtml(
+    val pointsTable = renderPointsTable(
         discussionId = discussionId,
         from = LocalDateTime(year, 1, 1, 0, 0),
         to = LocalDateTime(year, 12, 31, 23, 59, 59, 999),
@@ -167,7 +167,7 @@ fun updateHomeHallOfFame(discussionId: Long, contentId: Long?, lastYear: Int) {
         return
     }
     log.info("Getting data for year $lastYear")
-    val pointsTable = renderPointsTableHtml(
+    val pointsTable = renderPointsTable(
         discussionId = discussionId,
         from = LocalDateTime(lastYear, 1, 1, 0, 0),
         to = LocalDateTime(lastYear, 12, 31, 23, 59, 59, 999),
@@ -176,7 +176,7 @@ fun updateHomeHallOfFame(discussionId: Long, contentId: Long?, lastYear: Int) {
 
     val hallOfFame = (2022 until lastYear).reversed().map { y ->
         log.info("Getting data for year $y")
-        y to renderPointsTableHtml(
+        y to renderPointsTable(
             discussionId = discussionId,
             from = LocalDateTime(y, 1, 1, 0, 0),
             to = LocalDateTime(y, 12, 31, 23, 59, 59, 999),
@@ -240,7 +240,7 @@ private fun getGroupedPoints(
     .groupBy({ it.second.size }) { pair -> UserAndPoints(pair.first, pair.second) }
     .toSortedMap(reverseOrder())
 
-private fun renderPointsTable(
+private fun renderPointsPost(
     discussionId: Long,
     from: LocalDateTime,
     to: LocalDateTime,
@@ -266,7 +266,7 @@ private fun renderPointsTable(
     }
 }
 
-private fun renderPointsTableHtml(
+private fun renderPointsTable(
     discussionId: Long,
     from: LocalDateTime,
     to: LocalDateTime,
