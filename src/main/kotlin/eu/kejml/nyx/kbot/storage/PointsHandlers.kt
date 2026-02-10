@@ -143,7 +143,7 @@ fun postMonthlySummary(discussionId: Long, month: Month, year: Int) {
 }
 
 fun updateHome(discussionId: Long, contentId: Long, year: Int) {
-    val pointsTable = renderPointsTable(
+    val pointsTable = renderPointsTableHtml(
         discussionId = discussionId,
         from = LocalDateTime(year, 1, 1, 0, 0),
         to = LocalDateTime(year, 12, 31, 23, 59, 59, 999),
@@ -225,6 +225,19 @@ fun postSummary(body: String, discussionId: Long) {
     }
 }
 
+private fun getGroupedPoints(
+    discussionId: Long,
+    from: LocalDateTime,
+    to: LocalDateTime,
+    validatePoints: Boolean = true,
+): Map<Int, List<UserAndPoints>> = Points.getPointsBetween(discussionId, from, to)
+    .validatePointsAndRemoveInvalid(validatePoints)
+    .filter { it.givenTo != null }
+    .groupBy { it.givenTo!! }
+    .map { it.key to it.value }
+    .groupBy({ it.second.size }) { pair -> UserAndPoints(pair.first, pair.second) }
+    .toSortedMap(reverseOrder())
+
 private fun renderPointsTable(
     discussionId: Long,
     from: LocalDateTime,
@@ -232,19 +245,8 @@ private fun renderPointsTable(
     limitDisplayedPlaces: Int = Int.MAX_VALUE,
     validatePoints: Boolean = true,
 ): String {
-    var globalOrder = 1 // Good enough now
-
-    val pointsToUser = Points.getPointsBetween(
-        discussionId,
-        from,
-        to,
-    )
-        .validatePointsAndRemoveInvalid(validatePoints)
-        .filter { it.givenTo != null }
-        .groupBy { it.givenTo!! }
-        .map { it.key to it.value }
-        .groupBy({ it.second.size }) { pair -> UserAndPoints(pair.first, pair.second) }
-        .toSortedMap(reverseOrder())
+    var globalOrder = 1
+    val pointsToUser = getGroupedPoints(discussionId, from, to, validatePoints)
 
     return pointsToUser.entries.joinToString("\n") { numToUserPointsMap ->
         if (globalOrder > limitDisplayedPlaces) return@joinToString ""
@@ -260,6 +262,57 @@ private fun renderPointsTable(
         globalOrder += numberOfUsers
         resultLine
     }
+}
+
+private fun renderPointsTableHtml(
+    discussionId: Long,
+    from: LocalDateTime,
+    to: LocalDateTime,
+    limitDisplayedPlaces: Int = Int.MAX_VALUE,
+    validatePoints: Boolean = true,
+): String {
+    var globalOrder = 1
+    var rowIndex = 0
+    val pointsToUser = getGroupedPoints(discussionId, from, to, validatePoints)
+
+    val cellStyle = "border: 1px solid #ddd; padding: 8px; text-align: left;"
+    val tableStyle = "border-collapse: collapse; width: 300px;"
+    val headerStyle = "$cellStyle background-color: rgba(0, 0, 0, 0.05);"
+    val narrowHeaderStyle = "$cellStyle width: 1px; white-space: nowrap; background-color: rgba(0, 0, 0, 0.05);"
+
+    val tableRows = pointsToUser.entries.joinToString("") { numToUserPointsMap ->
+        if (globalOrder > limitDisplayedPlaces) return@joinToString ""
+        val numberOfUsers = numToUserPointsMap.value.size
+        val rows = numToUserPointsMap.value.sortedBy { it.userName }.joinToString("") { userAndPoints ->
+            val orderDisplay = determineOrder(numberOfUsers, globalOrder)
+            val rowStyle = if (rowIndex % 2 == 0) "" else "background-color: rgba(0, 0, 0, 0.08);"
+            rowIndex++
+            """
+                <tr style="$rowStyle">
+                    <td style="$cellStyle">$orderDisplay</td>
+                    <td style="$cellStyle">${userAndPoints.userName}</td>
+                    <td style="$cellStyle">${numToUserPointsMap.key}</td>
+                </tr>
+            """.trimIndent()
+        }
+        globalOrder += numberOfUsers
+        rows
+    }
+
+    return """
+        <table style="$tableStyle">
+            <thead>
+                <tr>
+                    <th style="$narrowHeaderStyle">Pořadí</th>
+                    <th style="$headerStyle">ID</th>
+                    <th style="$narrowHeaderStyle">Body</th>
+                </tr>
+            </thead>
+            <tbody>
+                $tableRows
+            </tbody>
+        </table>
+    """.trimIndent()
 }
 
 data class UserAndPoints(val userName: String, val points: List<Point>)
@@ -279,7 +332,7 @@ private fun determineOrder(numberOfUsers: Int, globalOrder: Int) =
     if (numberOfUsers == 1) {
         "${addMedal(globalOrder)}$globalOrder."
     } else {
-        "${addMedals(globalOrder, globalOrder + numberOfUsers - 1)}."
+        "${medalsAndRanks(globalOrder, globalOrder + numberOfUsers - 1)}."
     }
 
 private fun addMedal(order: Int): String {
@@ -291,6 +344,11 @@ private fun addMedal(order: Int): String {
     }
 }
 
-private fun addMedals(from: Int, to: Int): String {
-    return "${(from..to).intersect(1..3).joinToString("") { addMedal(it) }} $from.-$to"
-}
+private fun medalsAndRanks(from: Int, to: Int): String =
+    addMedals(from, to) + "$from.-$to"
+
+private fun addMedals(from: Int, to: Int): String =
+    (from..to).intersect(1..3)
+        .takeIf { it.isNotEmpty() }
+        ?.joinToString("&#8288;", postfix = "&nbsp;") { addMedal(it) }
+        .orEmpty()
