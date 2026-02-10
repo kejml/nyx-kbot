@@ -19,33 +19,24 @@ import kotlin.time.Duration.Companion.days
 class HourlyUpdateHandler : RequestHandler<ScheduledEvent, String> {
     // PROD
     private val discussionId = 11354L
-
-    // SANDBOX
-//    private val discussionId = 20310L
-
-    override fun handleRequest(input: ScheduledEvent, context: Context): String {
-        context.logger.log("Starting hourly points update")
-        val foundPoints = readPointsFromDiscussion(discussionId)
-        return "$foundPoints"
-    }
-}
-
-class UpdatedHomeHandler : RequestHandler<ScheduledEvent, String> {
-
-    // PROD
-    private val discussionId = 11354L
     private val contentId = 68695L
+
 
     // SANDBOX
 //    private val discussionId = 20310L
 //    private val contentId = 68692L
 
     override fun handleRequest(input: ScheduledEvent, context: Context): String {
-        val today = Clock.System.now().minus(1.days).toLocalDateTime(TimeZone.UTC)
-        val result = updateHome(discussionId, contentId, today.year)
-        return "$result"
+        context.logger.log("Starting hourly points update")
+        val foundPoints = readPointsFromDiscussion(discussionId)
+        if (foundPoints > 0) {
+            context.logger.log("Found $foundPoints points, updating home")
+            val today = Clock.System.now().minus(1.days).toLocalDateTime(TimeZone.UTC)
+            updateHome(discussionId, contentId, today.year)
+        }
+        context.logger.log("Done")
+        return "$foundPoints"
     }
-
 }
 
 class MonthlySummaryHandler : RequestHandler<ScheduledEvent, String> {

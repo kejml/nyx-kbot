@@ -104,15 +104,6 @@ class KbotStack(scope: Construct, id: String, props: StackProps) : Stack(scope, 
             .environment(lambdaEnvironment)
             .build()
 
-        val updateHomeFunction = Function.Builder.create(this, "UpdatedHomeFunction")
-            .runtime(Runtime.JAVA_21)
-            .handler("eu.kejml.nyx.kbot.lambda.UpdatedHomeHandler")
-            .code(Code.fromAsset("../build/libs/nyx-kbot-1.0-SNAPSHOT-all.jar"))
-            .timeout(Duration.minutes(15))
-            .memorySize(512)
-            .environment(lambdaEnvironment)
-            .build()
-
         val helloFunction = Function.Builder.create(this, "HelloFunction")
             .runtime(Runtime.JAVA_21)
             .handler("eu.kejml.nyx.kbot.lambda.HelloHandler")
@@ -135,10 +126,9 @@ class KbotStack(scope: Construct, id: String, props: StackProps) : Stack(scope, 
         pointsTable.grantReadWriteData(hourlyUpdateFunction)
         pointsTable.grantReadWriteData(monthlySummaryFunction)
         pointsTable.grantReadWriteData(yearlySummaryFunction)
-        pointsTable.grantReadWriteData(updateHomeFunction)
         pointsTable.grantReadData(helloFunction)
         pointsTable.grantReadData(nyxTestFunction)
-        
+
         // Additional permissions for existing table indexes (needed when using Table.fromTableName)
         val tableArn = "arn:aws:dynamodb:${this.region}:${this.account}:table/points"
         val indexPolicy = PolicyStatement.Builder.create()
@@ -160,7 +150,6 @@ class KbotStack(scope: Construct, id: String, props: StackProps) : Stack(scope, 
         hourlyUpdateFunction.addToRolePolicy(indexPolicy)
         monthlySummaryFunction.addToRolePolicy(indexPolicy)
         yearlySummaryFunction.addToRolePolicy(indexPolicy)
-        updateHomeFunction.addToRolePolicy(indexPolicy)
         helloFunction.addToRolePolicy(indexPolicy)
         nyxTestFunction.addToRolePolicy(indexPolicy)
 
@@ -196,14 +185,6 @@ class KbotStack(scope: Construct, id: String, props: StackProps) : Stack(scope, 
             .targets(listOf(LambdaFunction(yearlySummaryFunction)))
             .build()
 
-        Rule.Builder.create(this, "UpdatedHomeHandler")
-            .description("Updated home rule - Last deployed: $deploymentTime")
-            .schedule(Schedule.cron(CronOptions.builder()
-                .minute("15")
-                .hour("4")
-                .build()))
-            .targets(listOf(LambdaFunction(updateHomeFunction)))
-            .build()
 
         // API Gateway
         val api = RestApi.Builder.create(this, "KbotApi")
