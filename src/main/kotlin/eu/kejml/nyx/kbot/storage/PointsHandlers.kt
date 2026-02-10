@@ -161,22 +161,22 @@ fun updateHome(discussionId: Long, contentId: Long, year: Int) {
     )
 }
 
-fun updateHomeHallOfFame(discussionId: Long, contentId: Long?, year: Int) {
+fun updateHomeHallOfFame(discussionId: Long, contentId: Long?, lastYear: Int) {
     if (contentId == null) {
         log.info("No content id provided, skipping hall of fame")
         return
     }
-    log.info("Getting data for year $year")
-    val pointsTable = renderPointsTable(
+    log.info("Getting data for year $lastYear")
+    val pointsTable = renderPointsTableHtml(
         discussionId = discussionId,
-        from = LocalDateTime(year, 1, 1, 0, 0),
-        to = LocalDateTime(year, 12, 31, 23, 59, 59, 999),
+        from = LocalDateTime(lastYear, 1, 1, 0, 0),
+        to = LocalDateTime(lastYear, 12, 31, 23, 59, 59, 999),
         validatePoints = false,
     )
 
-    val hallOfFame = (2023 until year).reversed().map { y ->
+    val hallOfFame = (2022 until lastYear).reversed().map { y ->
         log.info("Getting data for year $y")
-        y to renderPointsTable(
+        y to renderPointsTableHtml(
             discussionId = discussionId,
             from = LocalDateTime(y, 1, 1, 0, 0),
             to = LocalDateTime(y, 12, 31, 23, 59, 59, 999),
@@ -188,6 +188,7 @@ fun updateHomeHallOfFame(discussionId: Long, contentId: Long?, year: Int) {
             <h3>${it.first}</h3>
             <br>
             ${it.second}
+            <br>
         """.trimIndent()
     }
 
@@ -195,12 +196,13 @@ fun updateHomeHallOfFame(discussionId: Long, contentId: Long?, year: Int) {
 
     return postHeader(
         """
-            <h2>Výsledky za rok $year</h2>
+            <h2>Výsledky za rok $lastYear</h2>
             <br>
         """.trimIndent()
             .plus(pointsTable)
             .plus("<br>")
             .plus("<h2>Síň slávy</h2>")
+            .plus("<br>")
             .plus(hallOfFame),
         discussionId,
         contentId,
