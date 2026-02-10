@@ -63,7 +63,7 @@ class MonthlySummaryHandler : RequestHandler<ScheduledEvent, String> {
 class YearlySummaryHandler : RequestHandler<ScheduledEvent, String> {
     // PROD
     private val discussionId = 11354L
-    private val contentId = null
+    private val contentId = 68810L
     // SANDBOX
 //    private val discussionId = 20310L
 //    private val contentId = 54996L
