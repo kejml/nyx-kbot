@@ -8,7 +8,7 @@ repositories {
 }
 
 dependencies {
-    implementation("software.amazon.awscdk:aws-cdk-lib:2.114.1")
+    implementation("software.amazon.awscdk:aws-cdk-lib:2.172.0")
     implementation("software.constructs:constructs:10.3.0")
     
     testImplementation(kotlin("test"))
