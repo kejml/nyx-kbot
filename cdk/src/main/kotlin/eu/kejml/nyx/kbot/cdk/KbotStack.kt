@@ -13,10 +13,6 @@ import software.amazon.awscdk.services.iam.PolicyStatement
 import software.amazon.awscdk.services.lambda.Code
 import software.amazon.awscdk.services.lambda.Function
 import software.amazon.awscdk.services.lambda.Runtime
-import software.amazon.awscdk.services.s3.BlockPublicAccess
-import software.amazon.awscdk.services.s3.Bucket
-import software.amazon.awscdk.services.s3.deployment.BucketDeployment
-import software.amazon.awscdk.services.s3.deployment.Source
 import software.constructs.Construct
 
 class KbotStack(scope: Construct, id: String, props: StackProps) : Stack(scope, id, props) {
@@ -25,6 +21,10 @@ class KbotStack(scope: Construct, id: String, props: StackProps) : Stack(scope, 
     private val deploymentTime = java.time.Instant.now().toString()
 
     init {
+        val secrets = java.util.Properties().apply {
+            load(java.io.FileInputStream("../src/main/resources/secret.properties"))
+        }
+
         // Parameter to control table creation
         val createTable = CfnParameter.Builder.create(this, "CreateTable")
             .type("String")
@@ -79,28 +79,6 @@ class KbotStack(scope: Construct, id: String, props: StackProps) : Stack(scope, 
         // Always use Table.fromTableName for permissions - this works whether table exists or will be created
         val pointsTable = Table.fromTableName(this, "PointsTableReference", "points")
 
-        // S3 static website bucket
-        val websiteBucket = Bucket.Builder.create(this, "WebsiteBucket")
-            .bucketName("kbot.kejml.eu")
-            .websiteIndexDocument("index.html")
-            .publicReadAccess(true)
-            .blockPublicAccess(
-                BlockPublicAccess.Builder.create()
-                    .blockPublicAcls(true)
-                    .ignorePublicAcls(true)
-                    .blockPublicPolicy(false)
-                    .restrictPublicBuckets(false)
-                    .build(),
-            )
-            .removalPolicy(RemovalPolicy.RETAIN)
-            .build()
-
-        BucketDeployment.Builder.create(this, "WebsiteDeployment")
-            .sources(listOf(Source.asset("../web")))
-            .destinationBucket(websiteBucket)
-            .prune(false)
-            .build()
-
         // Index policy for all scheduled Lambdas (covers table + indexes)
         val tableArn = "arn:aws:dynamodb:${this.region}:${this.account}:table/points"
         val indexPolicy = PolicyStatement.Builder.create()
@@ -127,7 +105,7 @@ class KbotStack(scope: Construct, id: String, props: StackProps) : Stack(scope, 
             hallOfFameContentId = 68810L,
             table = pointsTable,
             indexPolicy = indexPolicy,
-            websiteBucket = websiteBucket,
+            secrets = secrets,
             enabled = true,
         )
         createDiscussionLambdas(
@@ -137,7 +115,7 @@ class KbotStack(scope: Construct, id: String, props: StackProps) : Stack(scope, 
             hallOfFameContentId = null,
             table = pointsTable,
             indexPolicy = indexPolicy,
-            websiteBucket = websiteBucket,
+            secrets = secrets,
             enabled = true,
             startFromPostId = 58541254L,
         )
@@ -148,7 +126,7 @@ class KbotStack(scope: Construct, id: String, props: StackProps) : Stack(scope, 
             hallOfFameContentId = 54996L,
             table = pointsTable,
             indexPolicy = indexPolicy,
-            websiteBucket = websiteBucket,
+            secrets = secrets,
             enabled = false,
         )
 
@@ -217,8 +195,8 @@ class KbotStack(scope: Construct, id: String, props: StackProps) : Stack(scope, 
             .build()
 
         CfnOutput.Builder.create(this, "WebsiteUrl")
-            .value(websiteBucket.bucketWebsiteUrl)
-            .description("S3 Static Website URL")
+            .value("https://kbot.kejml.eu")
+            .description("Website URL")
             .build()
     }
 
@@ -229,14 +207,17 @@ class KbotStack(scope: Construct, id: String, props: StackProps) : Stack(scope, 
         hallOfFameContentId: Long?,
         table: ITable,
         indexPolicy: PolicyStatement,
-        websiteBucket: Bucket,
+        secrets: java.util.Properties,
         enabled: Boolean = true,
         startFromPostId: Long? = null,
     ) {
         val env = buildMap {
             put("TABLE_NAME", table.tableName)
             put("DISCUSSION_ID", discussionId.toString())
-            put("WEBSITE_BUCKET_NAME", websiteBucket.bucketName)
+            put("R2_ENDPOINT", secrets.getProperty("r2_endpoint"))
+            put("R2_ACCESS_KEY_ID", secrets.getProperty("r2_access_key_id"))
+            put("R2_SECRET_ACCESS_KEY", secrets.getProperty("r2_secret_access_key"))
+            put("R2_BUCKET_NAME", secrets.getProperty("r2_bucket_name"))
             homeContentId?.let { put("HOME_CONTENT_ID", it.toString()) }
             hallOfFameContentId?.let { put("HALL_OF_FAME_CONTENT_ID", it.toString()) }
             startFromPostId?.let { put("START_FROM_POST_ID", it.toString()) }
@@ -286,7 +267,6 @@ class KbotStack(scope: Construct, id: String, props: StackProps) : Stack(scope, 
         monthly.addToRolePolicy(indexPolicy)
         yearly.addToRolePolicy(indexPolicy)
         webGen.addToRolePolicy(indexPolicy)
-        websiteBucket.grantPut(webGen)
 
         if (enabled) {
             Rule.Builder.create(this, "HourlyUpdateRule$label")

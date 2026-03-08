@@ -24,3 +24,11 @@ fi
 
 echo "Deployment completed successfully!"
 cd ..
+
+echo "Uploading web files to R2..."
+R2_ENDPOINT=$(grep r2_endpoint src/main/resources/secret.properties | cut -d= -f2)
+R2_BUCKET=$(grep r2_bucket_name src/main/resources/secret.properties | cut -d= -f2)
+
+aws s3 sync web/ s3://$R2_BUCKET/ --endpoint-url $R2_ENDPOINT --profile r2
+
+echo "Web files uploaded successfully!"
