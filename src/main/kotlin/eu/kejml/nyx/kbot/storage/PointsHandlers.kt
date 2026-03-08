@@ -45,9 +45,9 @@ internal fun String.parsePointData(): List<QuestionIdGivenTo> {
         }.toList()
 }
 
-fun readPointsFromDiscussion(discussionId: Long): Int = runBlocking {
+fun readPointsFromDiscussion(discussionId: Long, startFromPostId: Long = 1L): Int = runBlocking {
     log.info("Saving posts")
-    val fromId = Points.getLastPostId(discussionId) ?: 1L
+    val fromId = Points.getLastPostId(discussionId) ?: startFromPostId
     val data = NyxClient.getDiscussion(discussionId, DiscussionQueryParams("bod -bodování", fromId))
     val discussion = json.decodeFromString<Discussion>(data)
     log.info(discussion.toString())

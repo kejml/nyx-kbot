@@ -95,7 +95,7 @@ class KbotStack(scope: Construct, id: String, props: StackProps) : Stack(scope, 
 
         // Scheduled Lambdas — one set per discussion
         createDiscussionLambdas("PoznejPcHru", 11354L, 68695L, 68810L, pointsTable, indexPolicy, enabled = true)
-        createDiscussionLambdas("ZabavnyKviz", 7045L, null, null, pointsTable, indexPolicy, enabled = true)
+        createDiscussionLambdas("ZabavnyKviz", 7045L, null, null, pointsTable, indexPolicy, enabled = true, startFromPostId = 58541254L)
         createDiscussionLambdas("Sandbox", 20310L, 68692L, 54996L, pointsTable, indexPolicy, enabled = false)
 
         // Non-discussion-specific Lambdas
@@ -171,12 +171,14 @@ class KbotStack(scope: Construct, id: String, props: StackProps) : Stack(scope, 
         table: ITable,
         indexPolicy: PolicyStatement,
         enabled: Boolean = true,
+        startFromPostId: Long? = null,
     ) {
         val env = buildMap {
             put("TABLE_NAME", table.tableName)
             put("DISCUSSION_ID", discussionId.toString())
             homeContentId?.let { put("HOME_CONTENT_ID", it.toString()) }
             hallOfFameContentId?.let { put("HALL_OF_FAME_CONTENT_ID", it.toString()) }
+            startFromPostId?.let { put("START_FROM_POST_ID", it.toString()) }
         }
 
         val hourly = Function.Builder.create(this, "HourlyUpdateFunction$label")

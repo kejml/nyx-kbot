@@ -19,10 +19,11 @@ import kotlin.time.Duration.Companion.days
 class HourlyUpdateHandler : RequestHandler<ScheduledEvent, String> {
     private val discussionId = System.getenv("DISCUSSION_ID").toLong()
     private val contentId = System.getenv("HOME_CONTENT_ID")?.toLongOrNull()
+    private val startFromPostId = System.getenv("START_FROM_POST_ID")?.toLongOrNull() ?: 1L
 
     override fun handleRequest(input: ScheduledEvent, context: Context): String {
         context.logger.log("Starting hourly points update")
-        val foundPoints = readPointsFromDiscussion(discussionId)
+        val foundPoints = readPointsFromDiscussion(discussionId, startFromPostId)
         if (foundPoints > 0 && contentId != null) {
             context.logger.log("Found $foundPoints points, updating home")
             val today = Clock.System.now().minus(1.days).toLocalDateTime(TimeZone.UTC)
