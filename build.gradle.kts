@@ -11,8 +11,8 @@ group = "eu.kejml"
 version = "1.0-SNAPSHOT"
 
 val ktorVersion by extra("3.2.2")
-val awsLambdaVersion by extra("1.2.2")
-val awsSdkVersion by extra("2.21.29")
+val awsLambdaVersion by extra("1.4.0")
+val awsSdkVersion by extra("2.34.0")
 
 repositories {
     mavenCentral()
@@ -21,14 +21,14 @@ repositories {
 dependencies {
     // AWS Lambda
     implementation("com.amazonaws:aws-lambda-java-core:$awsLambdaVersion")
-    implementation("com.amazonaws:aws-lambda-java-events:3.11.3")
+    implementation("com.amazonaws:aws-lambda-java-events:3.16.1")
 
     // HTTP Client
     implementation("io.ktor:ktor-client-core:$ktorVersion")
     implementation("io.ktor:ktor-client-cio:$ktorVersion")
 
     // Serialization
-    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.2")
+    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.9.0")
     implementation("org.jetbrains.kotlinx:kotlinx-datetime:0.5.0")
 
     // AWS SDK
@@ -36,11 +36,11 @@ dependencies {
     implementation("software.amazon.awssdk:dynamodb")
 
     // Logging
-    implementation("org.slf4j:slf4j-simple:2.0.9")
+    implementation("org.slf4j:slf4j-simple:2.0.17")
 
     testImplementation(kotlin("test"))
-    testImplementation("io.strikt:strikt-core:0.34.1")
-    testImplementation("org.junit.jupiter:junit-jupiter-params:5.8.2")
+    testImplementation("io.strikt:strikt-core:0.35.1")
+    testImplementation("org.junit.jupiter:junit-jupiter-params:5.12.2")
 }
 
 application {
