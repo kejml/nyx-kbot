@@ -94,9 +94,34 @@ class KbotStack(scope: Construct, id: String, props: StackProps) : Stack(scope, 
             .build()
 
         // Scheduled Lambdas — one set per discussion
-        createDiscussionLambdas("PoznejPcHru", 11354L, 68695L, 68810L, pointsTable, indexPolicy, enabled = true)
-        createDiscussionLambdas("ZabavnyKviz", 7045L, null, null, pointsTable, indexPolicy, enabled = true, startFromPostId = 58541254L)
-        createDiscussionLambdas("Sandbox", 20310L, 68692L, 54996L, pointsTable, indexPolicy, enabled = false)
+        createDiscussionLambdas(
+            label = "PoznejPcHru",
+            discussionId = 11354L,
+            homeContentId = 68695L,
+            hallOfFameContentId = 68810L,
+            table = pointsTable,
+            indexPolicy = indexPolicy,
+            enabled = true,
+        )
+        createDiscussionLambdas(
+            label = "ZabavnyKviz",
+            discussionId = 7045L,
+            homeContentId = null,
+            hallOfFameContentId = null,
+            table = pointsTable,
+            indexPolicy = indexPolicy,
+            enabled = true,
+            startFromPostId = 58541254L,
+        )
+        createDiscussionLambdas(
+            label = "Sandbox",
+            discussionId = 20310L,
+            homeContentId = 68692L,
+            hallOfFameContentId = 54996L,
+            table = pointsTable,
+            indexPolicy = indexPolicy,
+            enabled = false,
+        )
 
         // Non-discussion-specific Lambdas
         val baseEnv = mapOf("TABLE_NAME" to pointsTable.tableName)
