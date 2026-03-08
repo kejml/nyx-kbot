@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Statistiky bodů</title>
-    <script src="https://code.highcharts.com/highcharts.js"></script>
+    <script src="https://code.highcharts.com/stock/highstock.js"></script>
     <script src="https://code.highcharts.com/modules/accessibility.js"></script>
     <style>
         * { box-sizing: border-box; }
@@ -60,9 +60,19 @@
             const sortedDays = Object.keys(byDay).sort();
             const timeSeriesData = sortedDays.map(d => [new Date(d).getTime(), byDay[d]]);
 
-            Highcharts.chart('chart-timeseries', {
+            Highcharts.stockChart('chart-timeseries', {
                 title: { text: 'Body v čase' },
-                xAxis: { type: 'datetime', title: { text: 'Datum' } },
+                rangeSelector: {
+                    buttons: [
+                        { type: 'month', count: 3, text: '3M' },
+                        { type: 'month', count: 6, text: '6M' },
+                        { type: 'year', count: 1, text: '1R' },
+                        { type: 'year', count: 2, text: '2R' },
+                        { type: 'all', text: 'Vše' },
+                    ],
+                    selected: 4,
+                },
+                xAxis: { type: 'datetime' },
                 yAxis: { title: { text: 'Bodů za den' }, min: 0 },
                 tooltip: { xDateFormat: '%Y-%m-%d', valueSuffix: ' b' },
                 series: [{ name: 'Body', data: timeSeriesData, type: 'line', color: '#7cb5ec' }],
