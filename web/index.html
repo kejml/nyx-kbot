@@ -45,11 +45,70 @@
                 .slice(0, n);
         }
 
+        function updateSecondaryCharts(points, dowChart, receiversChart, giversChart) {
+            // --- Day of week ---
+            const byDow = [0, 0, 0, 0, 0, 0, 0];
+            points.forEach(p => {
+                const d = new Date(p.givenDateTime.substring(0, 10));
+                byDow[(d.getDay() + 6) % 7]++;
+            });
+            dowChart.series[0].setData(byDow, true);
+
+            // --- Top receivers ---
+            const receiverCounts = {};
+            points.forEach(p => {
+                if (p.givenTo) receiverCounts[p.givenTo] = (receiverCounts[p.givenTo] || 0) + 1;
+            });
+            const topReceivers = topN(receiverCounts, 20);
+            receiversChart.xAxis[0].setCategories(topReceivers.map(([k]) => k));
+            receiversChart.series[0].setData(topReceivers.map(([, v]) => v), true);
+
+            // --- Top givers ---
+            const giverCounts = {};
+            points.forEach(p => {
+                if (p.givenBy) giverCounts[p.givenBy] = (giverCounts[p.givenBy] || 0) + 1;
+            });
+            const topGivers = topN(giverCounts, 20);
+            giversChart.xAxis[0].setCategories(topGivers.map(([k]) => k));
+            giversChart.series[0].setData(topGivers.map(([, v]) => v), true);
+        }
+
         function renderCharts(data) {
             const points = data.points.filter(p => p.givenDateTime);
 
             document.getElementById('status').textContent =
                 `Diskuze ${data.discussionId} — ${points.length} bodů — vygenerováno ${data.generatedAt}`;
+
+            // --- Secondary charts (created first so stock chart can reference them) ---
+            const dowChart = Highcharts.chart('chart-dayofweek', {
+                title: { text: 'Body podle dne v týdnu' },
+                xAxis: { categories: DAY_NAMES },
+                yAxis: { title: { text: 'Celkem bodů' }, min: 0 },
+                series: [{ name: 'Body', data: [0, 0, 0, 0, 0, 0, 0], type: 'column', color: '#90ed7d' }],
+                legend: { enabled: false },
+                credits: { enabled: false },
+            });
+
+            const receiversChart = Highcharts.chart('chart-top-receivers', {
+                title: { text: 'Největší příjemci bodů' },
+                xAxis: { categories: [], labels: { rotation: -45 } },
+                yAxis: { title: { text: 'Přijatých bodů' }, min: 0 },
+                series: [{ name: 'Přijato', data: [], type: 'bar', color: '#f7a35c' }],
+                legend: { enabled: false },
+                credits: { enabled: false },
+            });
+
+            const giversChart = Highcharts.chart('chart-top-givers', {
+                title: { text: 'Největší dárci bodů' },
+                xAxis: { categories: [], labels: { rotation: -45 } },
+                yAxis: { title: { text: 'Udělených bodů' }, min: 0 },
+                series: [{ name: 'Uděleno', data: [], type: 'bar', color: '#8085e9' }],
+                legend: { enabled: false },
+                credits: { enabled: false },
+            });
+
+            // Populate secondary charts with full data initially
+            updateSecondaryCharts(points, dowChart, receiversChart, giversChart);
 
             // --- Points over time (per day) ---
             const byDay = {};
@@ -72,58 +131,21 @@
                     ],
                     selected: 4,
                 },
-                xAxis: { type: 'datetime' },
+                xAxis: {
+                    type: 'datetime',
+                    events: {
+                        afterSetExtremes: function(e) {
+                            const filtered = points.filter(p => {
+                                const t = new Date(p.givenDateTime.substring(0, 10)).getTime();
+                                return t >= e.min && t <= e.max;
+                            });
+                            updateSecondaryCharts(filtered, dowChart, receiversChart, giversChart);
+                        },
+                    },
+                },
                 yAxis: { title: { text: 'Bodů za den' }, min: 0 },
                 tooltip: { xDateFormat: '%Y-%m-%d', valueSuffix: ' b' },
                 series: [{ name: 'Body', data: timeSeriesData, type: 'line', color: '#7cb5ec' }],
-                legend: { enabled: false },
-                credits: { enabled: false },
-            });
-
-            // --- Day of week ---
-            const byDow = [0, 0, 0, 0, 0, 0, 0];
-            points.forEach(p => {
-                const d = new Date(p.givenDateTime.substring(0, 10));
-                byDow[(d.getDay() + 6) % 7]++;
-            });
-
-            Highcharts.chart('chart-dayofweek', {
-                title: { text: 'Body podle dne v týdnu' },
-                xAxis: { categories: DAY_NAMES },
-                yAxis: { title: { text: 'Celkem bodů' }, min: 0 },
-                series: [{ name: 'Body', data: byDow, type: 'column', color: '#90ed7d' }],
-                legend: { enabled: false },
-                credits: { enabled: false },
-            });
-
-            // --- Top receivers ---
-            const receiverCounts = {};
-            points.forEach(p => {
-                if (p.givenTo) receiverCounts[p.givenTo] = (receiverCounts[p.givenTo] || 0) + 1;
-            });
-            const topReceivers = topN(receiverCounts, 20);
-
-            Highcharts.chart('chart-top-receivers', {
-                title: { text: 'Největší příjemci bodů' },
-                xAxis: { categories: topReceivers.map(([k]) => k), labels: { rotation: -45 } },
-                yAxis: { title: { text: 'Přijatých bodů' }, min: 0 },
-                series: [{ name: 'Přijato', data: topReceivers.map(([, v]) => v), type: 'bar', color: '#f7a35c' }],
-                legend: { enabled: false },
-                credits: { enabled: false },
-            });
-
-            // --- Top givers ---
-            const giverCounts = {};
-            points.forEach(p => {
-                if (p.givenBy) giverCounts[p.givenBy] = (giverCounts[p.givenBy] || 0) + 1;
-            });
-            const topGivers = topN(giverCounts, 20);
-
-            Highcharts.chart('chart-top-givers', {
-                title: { text: 'Největší dárci bodů' },
-                xAxis: { categories: topGivers.map(([k]) => k), labels: { rotation: -45 } },
-                yAxis: { title: { text: 'Udělených bodů' }, min: 0 },
-                series: [{ name: 'Uděleno', data: topGivers.map(([, v]) => v), type: 'bar', color: '#8085e9' }],
                 legend: { enabled: false },
                 credits: { enabled: false },
             });
