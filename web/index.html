@@ -14,7 +14,14 @@
         .charts { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; max-width: 1400px; margin: 0 auto; }
         .chart { background: #fff; border-radius: 4px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
         .chart-full { grid-column: 1 / -1; }
-        #status { text-align: center; color: #666; font-size: 0.9em; margin-bottom: 16px; }
+        #status { text-align: center; color: #666; font-size: 0.9em; margin-bottom: 8px; }
+        #filter-bar { display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 6px; min-height: 32px; margin-bottom: 12px; }
+        .filter-tag { display: inline-flex; align-items: center; gap: 4px; background: #fff; border: 1px solid #ccc; border-radius: 14px; padding: 3px 10px 3px 12px; font-size: 0.82em; color: #333; }
+        .filter-tag .label { opacity: 0.6; font-size: 0.9em; margin-right: 2px; }
+        .filter-tag button { background: none; border: none; cursor: pointer; font-size: 1em; line-height: 1; padding: 0 0 1px; color: #888; }
+        .filter-tag button:hover { color: #c00; }
+        #btn-reset-all { background: #e55; border: none; border-radius: 14px; color: #fff; font-size: 0.82em; padding: 4px 12px; cursor: pointer; }
+        #btn-reset-all:hover { background: #c00; }
         @media (max-width: 768px) {
             .charts { grid-template-columns: 1fr; }
             .chart-full { grid-column: 1; }
@@ -24,6 +31,7 @@
 <body>
     <h1>Statistiky bodů</h1>
     <div id="status">Načítám data...</div>
+    <div id="filter-bar"></div>
     <div class="charts">
         <div id="chart-timeseries" class="chart chart-full" style="height:400px"></div>
         <div id="chart-dayofweek" class="chart" style="height:350px"></div>
@@ -174,7 +182,37 @@
                 });
             }
 
+            function updateFilterBar() {
+                const bar = document.getElementById('filter-bar');
+                bar.innerHTML = '';
+                const active = [
+                    activeDowFilter !== null && { label: 'Den', value: DAY_NAMES[activeDowFilter], clear: () => { activeDowFilter = null; } },
+                    activeHourFilter !== null && { label: 'Hodina', value: `${String(activeHourFilter).padStart(2, '0')}:00`, clear: () => { activeHourFilter = null; } },
+                    activeReceiverFilter !== null && { label: 'Obdržel', value: activeReceiverFilter, clear: () => { activeReceiverFilter = null; } },
+                    activeGiverFilter !== null && { label: 'Udělil', value: activeGiverFilter, clear: () => { activeGiverFilter = null; } },
+                ].filter(Boolean);
+                active.forEach(f => {
+                    const tag = document.createElement('span');
+                    tag.className = 'filter-tag';
+                    tag.innerHTML = `<span class="label">${f.label}:</span> ${f.value} <button title="Zrušit filtr">×</button>`;
+                    tag.querySelector('button').addEventListener('click', () => { f.clear(); onFilterChange(); });
+                    bar.appendChild(tag);
+                });
+                if (active.length > 1) {
+                    const btn = document.createElement('button');
+                    btn.id = 'btn-reset-all';
+                    btn.textContent = 'Zrušit vše';
+                    btn.addEventListener('click', () => {
+                        activeDowFilter = null; activeHourFilter = null;
+                        activeReceiverFilter = null; activeGiverFilter = null;
+                        onFilterChange();
+                    });
+                    bar.appendChild(btn);
+                }
+            }
+
             function onFilterChange() {
+                updateFilterBar();
                 const timeFiltered = getTimeFiltered();
                 refreshSecondaryCharts(timeFiltered, dowChart, hourlyChart, receiversChart, giversChart);
                 stockChart.series[0].setData(buildTimeseriesData(applyFilters(allPoints), allPoints), true);
