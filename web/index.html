@@ -26,8 +26,8 @@
     <div class="charts">
         <div id="chart-timeseries" class="chart chart-full" style="height:400px"></div>
         <div id="chart-dayofweek" class="chart" style="height:350px"></div>
-        <div id="chart-top-receivers" class="chart" style="height:350px"></div>
-        <div id="chart-top-givers" class="chart" style="height:350px"></div>
+        <div id="chart-top-receivers" class="chart"></div>
+        <div id="chart-top-givers" class="chart"></div>
     </div>
 
     <script>
@@ -62,6 +62,7 @@
             const topReceivers = topN(receiverCounts, 20);
             receiversChart.xAxis[0].setCategories(topReceivers.map(([k]) => k));
             receiversChart.series[0].setData(topReceivers.map(([, v]) => v), true);
+            receiversChart.setSize(null, topReceivers.length * 20 + 100);
 
             // --- Top givers ---
             const giverCounts = {};
@@ -71,6 +72,7 @@
             const topGivers = topN(giverCounts, 20);
             giversChart.xAxis[0].setCategories(topGivers.map(([k]) => k));
             giversChart.series[0].setData(topGivers.map(([, v]) => v), true);
+            giversChart.setSize(null, topGivers.length * 20 + 100);
         }
 
         function renderCharts(data) {
@@ -91,7 +93,7 @@
 
             const receiversChart = Highcharts.chart('chart-top-receivers', {
                 title: { text: 'Největší příjemci bodů' },
-                xAxis: { categories: [], labels: { rotation: -45 } },
+                xAxis: { categories: [], labels: { rotation: 0 } },
                 yAxis: { title: { text: 'Přijatých bodů' }, min: 0 },
                 series: [{ name: 'Přijato', data: [], type: 'bar', color: '#f7a35c' }],
                 legend: { enabled: false },
@@ -100,7 +102,7 @@
 
             const giversChart = Highcharts.chart('chart-top-givers', {
                 title: { text: 'Největší dárci bodů' },
-                xAxis: { categories: [], labels: { rotation: -45 } },
+                xAxis: { categories: [], labels: { rotation: 0 } },
                 yAxis: { title: { text: 'Udělených bodů' }, min: 0 },
                 series: [{ name: 'Uděleno', data: [], type: 'bar', color: '#8085e9' }],
                 legend: { enabled: false },
