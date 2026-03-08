@@ -80,16 +80,16 @@
             return filtered;
         }
 
-        function buildTimeseriesData(points) {
+        function buildTimeseriesData(points, allPoints) {
             const byDay = {};
             points.forEach(p => {
                 const day = p.givenDateTime.substring(0, 10);
                 byDay[day] = (byDay[day] || 0) + 1;
             });
-            const sortedDays = Object.keys(byDay).sort();
-            if (!sortedDays.length) return [];
-            const firstDay = new Date(sortedDays[0]);
-            const lastDay = new Date(sortedDays[sortedDays.length - 1]);
+            const sortedAll = allPoints.map(p => p.givenDateTime.substring(0, 10)).sort();
+            if (!sortedAll.length) return [];
+            const firstDay = new Date(sortedAll[0]);
+            const lastDay = new Date(sortedAll[sortedAll.length - 1]);
             const data = [];
             for (let d = new Date(firstDay); d <= lastDay; d.setDate(d.getDate() + 1)) {
                 const key = d.toISOString().substring(0, 10);
@@ -177,7 +177,7 @@
             function onFilterChange() {
                 const timeFiltered = getTimeFiltered();
                 refreshSecondaryCharts(timeFiltered, dowChart, hourlyChart, receiversChart, giversChart);
-                stockChart.series[0].setData(buildTimeseriesData(applyFilters(allPoints)), true);
+                stockChart.series[0].setData(buildTimeseriesData(applyFilters(allPoints), allPoints), true);
             }
 
             const dowChart = Highcharts.chart('chart-dayofweek', {
@@ -311,7 +311,7 @@
                 },
                 yAxis: { title: { text: 'Bodů za den' }, min: 0 },
                 tooltip: { xDateFormat: '%Y-%m-%d', valueSuffix: ' b' },
-                series: [{ name: 'Body', data: buildTimeseriesData(allPoints), type: 'line', color: '#7cb5ec' }],
+                series: [{ name: 'Body', data: buildTimeseriesData(allPoints, allPoints), type: 'line', color: '#7cb5ec' }],
                 legend: { enabled: false },
                 credits: { enabled: false },
             });
