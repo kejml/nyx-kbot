@@ -58,15 +58,49 @@
                 .slice(0, n);
         }
 
-        function updateSecondaryCharts(points, dowChart, hourlyChart, receiversChart, giversChart) {
-            // --- Day of week ---
-            const byDow = [0, 0, 0, 0, 0, 0, 0];
+        let activeDowFilter = null;
+
+        function applyDowFilter(points) {
+            if (activeDowFilter === null) return points;
+            return points.filter(p => {
+                const d = new Date(p.givenDateTime.substring(0, 10));
+                return (d.getDay() + 6) % 7 === activeDowFilter;
+            });
+        }
+
+        function buildTimeseriesData(points) {
+            const byDay = {};
             points.forEach(p => {
+                const day = p.givenDateTime.substring(0, 10);
+                byDay[day] = (byDay[day] || 0) + 1;
+            });
+            const sortedDays = Object.keys(byDay).sort();
+            if (!sortedDays.length) return [];
+            const firstDay = new Date(sortedDays[0]);
+            const lastDay = new Date(sortedDays[sortedDays.length - 1]);
+            const data = [];
+            for (let d = new Date(firstDay); d <= lastDay; d.setDate(d.getDate() + 1)) {
+                const key = d.toISOString().substring(0, 10);
+                data.push([d.getTime(), byDay[key] || 0]);
+            }
+            return data;
+        }
+
+        // Updates DOW chart data and highlights the active filter column
+        function updateDowChart(dowChart, timeFilteredPoints) {
+            const byDow = [0, 0, 0, 0, 0, 0, 0];
+            timeFilteredPoints.forEach(p => {
                 const d = new Date(p.givenDateTime.substring(0, 10));
                 byDow[(d.getDay() + 6) % 7]++;
             });
-            dowChart.series[0].setData(byDow, true);
+            dowChart.series[0].setData(byDow.map((v, i) => ({
+                y: v,
+                color: activeDowFilter === null || i === activeDowFilter ? '#90ed7d' : 'rgba(144,237,125,0.3)',
+            })), true);
+        }
 
+        // Updates all charts except the DOW chart
+        function updateFilteredCharts(points, hourlyChart, receiversChart, giversChart) {
             // --- Hour of day ---
             const byHour = Array(24).fill(0);
             points.forEach(p => {
@@ -98,19 +132,38 @@
         }
 
         function renderCharts(data) {
-            const points = data.points.filter(p => p.givenDateTime);
+            const allPoints = data.points.filter(p => p.givenDateTime);
 
             const discussionName = DISCUSSION_NAMES[String(data.discussionId)] || `Diskuze ${data.discussionId}`;
             document.title = `Statistiky bodů — ${discussionName}`;
             document.querySelector('h1').textContent = `Statistiky bodů — ${discussionName}`;
             document.getElementById('status').textContent =
-                `${points.length} bodů — vygenerováno ${data.generatedAt}`;
+                `${allPoints.length} bodů — vygenerováno ${data.generatedAt}`;
 
-            // --- Secondary charts (created first so stock chart can reference them) ---
             const dowChart = Highcharts.chart('chart-dayofweek', {
                 title: { text: 'Body podle dne v týdnu' },
                 xAxis: { categories: DAY_NAMES },
                 yAxis: { title: { text: 'Celkem bodů' }, min: 0 },
+                plotOptions: {
+                    series: {
+                        cursor: 'pointer',
+                        point: {
+                            events: {
+                                click: function () {
+                                    activeDowFilter = activeDowFilter === this.index ? null : this.index;
+                                    const { min, max } = stockChart.xAxis[0].getExtremes();
+                                    const timeFiltered = allPoints.filter(p => {
+                                        const t = new Date(p.givenDateTime.substring(0, 10)).getTime();
+                                        return t >= min && t <= max;
+                                    });
+                                    updateDowChart(dowChart, timeFiltered);
+                                    stockChart.series[0].setData(buildTimeseriesData(applyDowFilter(allPoints)), true);
+                                    updateFilteredCharts(applyDowFilter(timeFiltered), hourlyChart, receiversChart, giversChart);
+                                },
+                            },
+                        },
+                    },
+                },
                 series: [{ name: 'Body', data: [0, 0, 0, 0, 0, 0, 0], type: 'column', color: '#90ed7d' }],
                 legend: { enabled: false },
                 credits: { enabled: false },
@@ -155,25 +208,10 @@
                 credits: { enabled: false },
             });
 
-            // Populate secondary charts with full data initially
-            updateSecondaryCharts(points, dowChart, hourlyChart, receiversChart, giversChart);
+            updateDowChart(dowChart, allPoints);
+            updateFilteredCharts(allPoints, hourlyChart, receiversChart, giversChart);
 
-            // --- Points over time (per day) ---
-            const byDay = {};
-            points.forEach(p => {
-                const day = p.givenDateTime.substring(0, 10);
-                byDay[day] = (byDay[day] || 0) + 1;
-            });
-            const sortedDays = Object.keys(byDay).sort();
-            const firstDay = new Date(sortedDays[0]);
-            const lastDay = new Date(sortedDays[sortedDays.length - 1]);
-            const timeSeriesData = [];
-            for (let d = new Date(firstDay); d <= lastDay; d.setDate(d.getDate() + 1)) {
-                const key = d.toISOString().substring(0, 10);
-                timeSeriesData.push([d.getTime(), byDay[key] || 0]);
-            }
-
-            Highcharts.stockChart('chart-timeseries', {
+            const stockChart = Highcharts.stockChart('chart-timeseries', {
                 chart: { zoomType: 'x' },
                 title: { text: 'Body v čase' },
                 rangeSelector: {
@@ -189,18 +227,19 @@
                 xAxis: {
                     type: 'datetime',
                     events: {
-                        afterSetExtremes: function(e) {
-                            const filtered = points.filter(p => {
+                        afterSetExtremes: function (e) {
+                            const timeFiltered = allPoints.filter(p => {
                                 const t = new Date(p.givenDateTime.substring(0, 10)).getTime();
                                 return t >= e.min && t <= e.max;
                             });
-                            updateSecondaryCharts(filtered, dowChart, hourlyChart, receiversChart, giversChart);
+                            updateDowChart(dowChart, timeFiltered);
+                            updateFilteredCharts(applyDowFilter(timeFiltered), hourlyChart, receiversChart, giversChart);
                         },
                     },
                 },
                 yAxis: { title: { text: 'Bodů za den' }, min: 0 },
                 tooltip: { xDateFormat: '%Y-%m-%d', valueSuffix: ' b' },
-                series: [{ name: 'Body', data: timeSeriesData, type: 'line', color: '#7cb5ec' }],
+                series: [{ name: 'Body', data: buildTimeseriesData(allPoints), type: 'line', color: '#7cb5ec' }],
                 legend: { enabled: false },
                 credits: { enabled: false },
             });
