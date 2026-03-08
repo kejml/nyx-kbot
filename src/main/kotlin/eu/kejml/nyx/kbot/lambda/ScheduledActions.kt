@@ -19,16 +19,20 @@ object ScheduledActions {
     }
 
     fun monthlySummary() {
-        val yesterday = Clock.System.now().minus(1.days).toLocalDateTime(TimeZone.UTC)
+        val yesterday = Clock.System
+            .now()
+            .minus(1.days)
+            .toLocalDateTime(TimeZone.UTC)
         postMonthlySummary(discussionId, yesterday.month, yesterday.year)
     }
 
     fun yearlySummary() {
-        val yesterday = Clock.System.now().minus(1.days).toLocalDateTime(TimeZone.UTC)
+        val yesterday = Clock.System
+            .now()
+            .minus(1.days)
+            .toLocalDateTime(TimeZone.UTC)
         postYearlySummary(discussionId, yesterday.year)
     }
 
-    fun test(): String {
-        return Clock.System.now().toString()
-    }
+    fun test(): String = Clock.System.now().toString()
 }

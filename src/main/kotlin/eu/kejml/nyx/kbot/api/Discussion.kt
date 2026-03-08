@@ -5,7 +5,9 @@ import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
 @Serializable
-data class Discussion(val posts: List<Post>)
+data class Discussion(
+    val posts: List<Post>,
+)
 
 @Serializable
 data class Post(

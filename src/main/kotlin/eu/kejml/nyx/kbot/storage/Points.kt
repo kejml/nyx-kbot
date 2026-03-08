@@ -12,7 +12,7 @@ import software.amazon.awssdk.services.dynamodb.model.PutItemRequest
 import software.amazon.awssdk.services.dynamodb.model.QueryRequest
 import software.amazon.awssdk.services.dynamodb.model.ResourceNotFoundException
 
-const val tableName = "points"
+const val TABLE_NAME = "points"
 
 data class Point(
     val discussionId: Long,
@@ -40,8 +40,9 @@ object Points {
     private val log = LoggerFactory.getLogger(this.javaClass)
 
     internal fun getLastPostId(discussionId: Long): Long? {
-        val request = QueryRequest.builder()
-            .tableName(tableName)
+        val request = QueryRequest
+            .builder()
+            .tableName(TABLE_NAME)
             .indexName("lastId")
             .keyConditionExpression("discussionId = :discussionId")
             .expressionAttributeValues(
@@ -66,15 +67,16 @@ object Points {
         pointValues["questionId"] = AttributeValue.builder().n(point.questionId.toString()).build()
         pointValues["givenBy"] = AttributeValue.builder().s(point.givenBy).build()
 
-        val request = PutItemRequest.builder()
-            .tableName(tableName)
+        val request = PutItemRequest
+            .builder()
+            .tableName(TABLE_NAME)
             .item(pointValues)
             .build()
 
         try {
             client.putItem(request)
         } catch (e: ResourceNotFoundException) {
-            log.error("Error: The Amazon DynamoDB table '$tableName' can't be found.", e)
+            log.error("Error: The Amazon DynamoDB table '$TABLE_NAME' can't be found.", e)
         } catch (e: DynamoDbException) {
             log.error("Exception while persisting point", e)
         }
@@ -86,15 +88,16 @@ object Points {
             "questionId" to AttributeValue.builder().n(point.questionId.toString()).build(),
         )
 
-        val request = DeleteItemRequest.builder()
-            .tableName(tableName)
+        val request = DeleteItemRequest
+            .builder()
+            .tableName(TABLE_NAME)
             .key(keyToRemove)
             .build()
 
         try {
             client.deleteItem(request)
         } catch (e: ResourceNotFoundException) {
-            log.error("Error: The Amazon DynamoDB table '$tableName' can't be found.", e)
+            log.error("Error: The Amazon DynamoDB table '$TABLE_NAME' can't be found.", e)
         } catch (e: DynamoDbException) {
             log.error("Exception while deleting point", e)
         }
@@ -103,12 +106,12 @@ object Points {
     internal fun getAPoint(id: Long): Point? {
         val keyToGet = HashMap<String, AttributeValue>()
 
-        keyToGet["postId"] = AttributeValue.builder()
-            .n(id.toString()).build()
+        keyToGet["postId"] = AttributeValue.builder().n(id.toString()).build()
 
-        val request = GetItemRequest.builder()
+        val request = GetItemRequest
+            .builder()
             .key(keyToGet)
-            .tableName(tableName)
+            .tableName(TABLE_NAME)
             .build()
 
         val returnedItem: Map<String, AttributeValue>? = client.getItem(request).item()
@@ -120,11 +123,16 @@ object Points {
         }
     }
 
-    internal fun getPointsBetween(discussionId: Long, from: LocalDateTime, to: LocalDateTime): List<Point> {
+    internal fun getPointsBetween(
+        discussionId: Long,
+        from: LocalDateTime,
+        to: LocalDateTime,
+    ): List<Point> {
         log.info("Getting points between $from and $to")
 
-        val request = QueryRequest.builder()
-            .tableName(tableName)
+        val request = QueryRequest
+            .builder()
+            .tableName(TABLE_NAME)
             .indexName("dateTimeIndex")
             .keyConditionExpression("discussionId = :discussionId AND givenDateTime BETWEEN :dateFrom AND :dateTo")
             .expressionAttributeValues(
@@ -133,9 +141,12 @@ object Points {
                     ":dateFrom" to AttributeValue.builder().s(from.toString()).build(),
                     ":dateTo" to AttributeValue.builder().s(to.toString()).build(),
                 ),
-            )
-            .build()
+            ).build()
 
-        return client.queryPaginator(request).items()?.let { item -> item.map { fromAttributeValues(it) } }?.toList() ?: emptyList()
+        return client
+            .queryPaginator(request)
+            .items()
+            ?.let { item -> item.map { fromAttributeValues(it) } }
+            ?.toList() ?: emptyList()
     }
 }

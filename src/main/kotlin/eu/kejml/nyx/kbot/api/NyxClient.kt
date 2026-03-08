@@ -11,17 +11,23 @@ import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
 import java.util.*
 
-enum class DiscussionOrder(val apiString: String) {
+enum class DiscussionOrder(
+    val apiString: String,
+) {
     NEWER_THAN("newer_than"),
     OLDER_THAN("older_than"),
 }
 
-enum class PostFormat(val apiString: String) {
+enum class PostFormat(
+    val apiString: String,
+) {
     TEXT("text"),
     HTML("html"),
 }
 
-enum class RatingAction(val apiString: String) {
+enum class RatingAction(
+    val apiString: String,
+) {
     POSITIVE("positive"),
 }
 
@@ -50,37 +56,43 @@ object NyxClient {
 
     private val log = LoggerFactory.getLogger(this.javaClass)
 
-    suspend fun getDiscussion(id: Long, params: DiscussionQueryParams? = null): String {
-        return nyxGet("discussion/$id${params?.toUrl() ?: ""}")
-    }
+    suspend fun getDiscussion(
+        id: Long,
+        params: DiscussionQueryParams? = null,
+    ): String = nyxGet("discussion/$id${params?.toUrl() ?: ""}")
 
-    suspend fun getHome(id: Long): String {
-        return nyxGet("discussion/$id/content/home")
-    }
+    suspend fun getHome(id: Long): String = nyxGet("discussion/$id/content/home")
 
-    suspend fun updateHome(discussionId: Long, contentId: Long, content: String): String {
-        return nyxPost(
+    suspend fun updateHome(
+        discussionId: Long,
+        contentId: Long,
+        content: String,
+    ): String =
+        nyxPost(
             endpoint = "discussion/$discussionId/content/$contentId/save",
             content = mapOf(
                 "content" to content,
                 "format" to PostFormat.HTML.apiString,
             ),
         )
-    }
 
-    suspend fun postDiscussion(discussionId: Long, content: String, format: PostFormat = PostFormat.HTML): String {
-        return nyxPost(
-            "discussion/$discussionId/send/text",
-            mapOf(
-                "content" to content,
-                "format" to format.apiString,
-            ),
-        )
-    }
+    suspend fun postDiscussion(
+        discussionId: Long,
+        content: String,
+        format: PostFormat = PostFormat.HTML,
+    ): String = nyxPost(
+        "discussion/$discussionId/send/text",
+        mapOf(
+            "content" to content,
+            "format" to format.apiString,
+        ),
+    )
 
-    suspend fun ratePost(discussionId: Long, postId: Long, action: RatingAction = RatingAction.POSITIVE): String {
-        return nyxPost("discussion/$discussionId/rating/$postId/${action.apiString}")
-    }
+    suspend fun ratePost(
+        discussionId: Long,
+        postId: Long,
+        action: RatingAction = RatingAction.POSITIVE,
+    ): String = nyxPost("discussion/$discussionId/rating/$postId/${action.apiString}")
 
     private suspend fun nyxGet(endpoint: String): String {
         val urlString = "https://nyx.cz/api/$endpoint"
@@ -90,10 +102,19 @@ object NyxClient {
                 this.append("Authorization", "Bearer $nyxToken")
             }
         }
-        return if (response.status.isSuccess()) response.body() else throw IllegalStateException("Unexpected response from nyx.cz: $response")
+        return if (response.status.isSuccess()) {
+            response.body()
+        } else {
+            throw IllegalStateException(
+                "Unexpected response from nyx.cz: $response",
+            )
+        }
     }
 
-    private suspend fun nyxPost(endpoint: String, content: Map<String, String> = emptyMap()): String {
+    private suspend fun nyxPost(
+        endpoint: String,
+        content: Map<String, String> = emptyMap(),
+    ): String {
         val urlString = "https://nyx.cz/api/$endpoint"
         log.info(urlString)
         val response = client.post(urlString) {
@@ -108,6 +129,12 @@ object NyxClient {
                 ),
             )
         }
-        return if (response.status.isSuccess()) response.body() else throw IllegalStateException("Unexpected response from nyx.cz: $response, ${response.body<String>()}")
+        return if (response.status.isSuccess()) {
+            response.body()
+        } else {
+            throw IllegalStateException(
+                "Unexpected response from nyx.cz: $response, ${response.body<String>()}",
+            )
+        }
     }
 }

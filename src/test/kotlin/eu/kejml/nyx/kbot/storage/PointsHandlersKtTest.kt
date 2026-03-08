@@ -10,7 +10,6 @@ import strikt.assertions.isEmpty
 import strikt.assertions.isEqualTo
 
 internal class PointsHandlersKtTest {
-
     @ParameterizedTest
     @ValueSource(
         strings = [
@@ -43,7 +42,8 @@ internal class PointsHandlersKtTest {
     fun `parsing single point`(postContent: String) {
         val pointData = postContent.parsePointData()
 
-        expectThat(pointData).hasSize(1)
+        expectThat(pointData)
+            .hasSize(1)
             .first()
             .isEqualTo(QuestionIdGivenTo(42L, "UZIVATEL"))
     }
@@ -87,8 +87,7 @@ internal class PointsHandlersKtTest {
             .hasSize(2)
             .any {
                 isEqualTo(QuestionIdGivenTo(42L, "UZIVATEL"))
-            }
-            .any {
+            }.any {
                 isEqualTo(QuestionIdGivenTo(43L, "UZIVATEL"))
             }
     }

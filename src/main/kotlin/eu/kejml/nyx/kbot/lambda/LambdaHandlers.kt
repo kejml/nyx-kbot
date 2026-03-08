@@ -21,12 +21,18 @@ class HourlyUpdateHandler : RequestHandler<ScheduledEvent, String> {
     private val contentId = System.getenv("HOME_CONTENT_ID")?.toLongOrNull()
     private val startFromPostId = System.getenv("START_FROM_POST_ID")?.toLongOrNull() ?: 1L
 
-    override fun handleRequest(input: ScheduledEvent, context: Context): String {
+    override fun handleRequest(
+        input: ScheduledEvent,
+        context: Context,
+    ): String {
         context.logger.log("Starting hourly points update")
         val foundPoints = readPointsFromDiscussion(discussionId, startFromPostId)
         if (foundPoints > 0 && contentId != null) {
             context.logger.log("Found $foundPoints points, updating home")
-            val today = Clock.System.now().minus(1.days).toLocalDateTime(TimeZone.UTC)
+            val today = Clock.System
+                .now()
+                .minus(1.days)
+                .toLocalDateTime(TimeZone.UTC)
             updateHome(discussionId, contentId, today.year)
         }
         context.logger.log("Done")
@@ -37,9 +43,15 @@ class HourlyUpdateHandler : RequestHandler<ScheduledEvent, String> {
 class MonthlySummaryHandler : RequestHandler<ScheduledEvent, String> {
     private val discussionId = System.getenv("DISCUSSION_ID").toLong()
 
-    override fun handleRequest(input: ScheduledEvent, context: Context): String {
+    override fun handleRequest(
+        input: ScheduledEvent,
+        context: Context,
+    ): String {
         context.logger.log("Starting monthly summary")
-        val yesterday = Clock.System.now().minus(1.days).toLocalDateTime(TimeZone.UTC)
+        val yesterday = Clock.System
+            .now()
+            .minus(1.days)
+            .toLocalDateTime(TimeZone.UTC)
         postMonthlySummary(discussionId, yesterday.month, yesterday.year)
         return "Monthly summary posted"
     }
@@ -49,9 +61,15 @@ class YearlySummaryHandler : RequestHandler<ScheduledEvent, String> {
     private val discussionId = System.getenv("DISCUSSION_ID").toLong()
     private val hallOfFameContentId = System.getenv("HALL_OF_FAME_CONTENT_ID")?.toLongOrNull()
 
-    override fun handleRequest(input: ScheduledEvent, context: Context): String {
+    override fun handleRequest(
+        input: ScheduledEvent,
+        context: Context,
+    ): String {
         context.logger.log("Starting yearly summary")
-        val yesterday = Clock.System.now().minus(1.days).toLocalDateTime(TimeZone.UTC)
+        val yesterday = Clock.System
+            .now()
+            .minus(1.days)
+            .toLocalDateTime(TimeZone.UTC)
         postYearlySummary(discussionId, yesterday.year)
         updateHomeHallOfFame(discussionId, hallOfFameContentId, yesterday.year)
         return "Yearly summary posted"
@@ -59,18 +77,23 @@ class YearlySummaryHandler : RequestHandler<ScheduledEvent, String> {
 }
 
 class HelloHandler : RequestHandler<APIGatewayProxyRequestEvent, APIGatewayProxyResponseEvent> {
-    override fun handleRequest(input: APIGatewayProxyRequestEvent, context: Context): APIGatewayProxyResponseEvent {
-        return APIGatewayProxyResponseEvent().apply {
+    override fun handleRequest(
+        input: APIGatewayProxyRequestEvent,
+        context: Context,
+    ): APIGatewayProxyResponseEvent =
+        APIGatewayProxyResponseEvent().apply {
             statusCode = 200
             headers = mapOf("Content-Type" to "text/plain")
             body = Clock.System.now().toString()
         }
-    }
 }
 
 class NyxTestHandler : RequestHandler<APIGatewayProxyRequestEvent, APIGatewayProxyResponseEvent> {
-    override fun handleRequest(input: APIGatewayProxyRequestEvent, context: Context): APIGatewayProxyResponseEvent {
-        return try {
+    override fun handleRequest(
+        input: APIGatewayProxyRequestEvent,
+        context: Context,
+    ): APIGatewayProxyResponseEvent =
+        try {
             val result = nyxTest()
             APIGatewayProxyResponseEvent().apply {
                 statusCode = 200
@@ -85,5 +108,4 @@ class NyxTestHandler : RequestHandler<APIGatewayProxyRequestEvent, APIGatewayPro
                 body = "Error: ${e.message}"
             }
         }
-    }
 }

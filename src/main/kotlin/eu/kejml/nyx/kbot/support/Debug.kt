@@ -14,11 +14,12 @@ import kotlin.time.Duration.Companion.days
 suspend fun main() {
     val client = HttpClient()
 
-    val response: String = client.post("https://nyx.cz/api/create_token/KBOT") {
-        headers {
-            append(HttpHeaders.UserAgent, "KBOT")
-        }
-    }.body()
+    val response: String = client
+        .post("https://nyx.cz/api/create_token/KBOT") {
+            headers {
+                append(HttpHeaders.UserAgent, "KBOT")
+            }
+        }.body()
 
     println(response)
 }
@@ -29,20 +30,21 @@ private val json = Json { ignoreUnknownKeys = true }
 private val discussionId = 20310L
 private val contentId = 54996L
 
-fun nyxTest(): String {
-    return runBlocking {
+fun nyxTest(): String = runBlocking {
 //        val data = NyxClient.getDiscussion(discussionId, DiscussionQueryParams(null, 1))
 //        val discussion = json.decodeFromString<Discussion>(data)
 
-        val yesterday = Clock.System.now().minus(1.days).toLocalDateTime(TimeZone.UTC)
-        // postYearlySummary(discussionId, yesterday.year)
-        // val res = updateHomeHallOfFame(discussionId, contentId, yesterday.year)
+    val yesterday = Clock.System
+        .now()
+        .minus(1.days)
+        .toLocalDateTime(TimeZone.UTC)
+    // postYearlySummary(discussionId, yesterday.year)
+    // val res = updateHomeHallOfFame(discussionId, contentId, yesterday.year)
 
-        // TODO more points in one post? Point surrounded by text?
+    // TODO more points in one post? Point surrounded by text?
 //        discussion.posts.filter {
 //            it.content.contains(Regex("<(b|strong)>(<em.*>)?bod(</em>)?</(b|strong)>", RegexOption.IGNORE_CASE))
 //        }.toString()
 //        data
-        "Yesterday was $yesterday"
-    }
+    "Yesterday was $yesterday"
 }
