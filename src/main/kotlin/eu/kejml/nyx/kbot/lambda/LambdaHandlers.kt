@@ -17,14 +17,8 @@ import kotlinx.datetime.toLocalDateTime
 import kotlin.time.Duration.Companion.days
 
 class HourlyUpdateHandler : RequestHandler<ScheduledEvent, String> {
-    // PROD
-    private val discussionId = 11354L
-    private val contentId = 68695L
-
-
-    // SANDBOX
-//    private val discussionId = 20310L
-//    private val contentId = 68692L
+    private val discussionId = System.getenv("DISCUSSION_ID").toLong()
+    private val contentId = System.getenv("HOME_CONTENT_ID").toLong()
 
     override fun handleRequest(input: ScheduledEvent, context: Context): String {
         context.logger.log("Starting hourly points update")
@@ -40,8 +34,7 @@ class HourlyUpdateHandler : RequestHandler<ScheduledEvent, String> {
 }
 
 class MonthlySummaryHandler : RequestHandler<ScheduledEvent, String> {
-    private val discussionId = 11354L // PROD
-//    private val discussionId = 20310L // SANDBOX
+    private val discussionId = System.getenv("DISCUSSION_ID").toLong()
 
     override fun handleRequest(input: ScheduledEvent, context: Context): String {
         context.logger.log("Starting monthly summary")
@@ -52,18 +45,15 @@ class MonthlySummaryHandler : RequestHandler<ScheduledEvent, String> {
 }
 
 class YearlySummaryHandler : RequestHandler<ScheduledEvent, String> {
-    // PROD
-    private val discussionId = 11354L
-    private val contentId = 68810L
-    // SANDBOX
-//    private val discussionId = 20310L
-//    private val contentId = 54996L
+    private val discussionId = System.getenv("DISCUSSION_ID").toLong()
+    private val contentId = System.getenv("HOME_CONTENT_ID").toLong()
+    private val hallOfFameContentId = System.getenv("HALL_OF_FAME_CONTENT_ID")?.toLongOrNull()
 
     override fun handleRequest(input: ScheduledEvent, context: Context): String {
         context.logger.log("Starting yearly summary")
         val yesterday = Clock.System.now().minus(1.days).toLocalDateTime(TimeZone.UTC)
         postYearlySummary(discussionId, yesterday.year)
-        updateHomeHallOfFame(discussionId, contentId, yesterday.year)
+        updateHomeHallOfFame(discussionId, hallOfFameContentId, yesterday.year)
         return "Yearly summary posted"
     }
 }

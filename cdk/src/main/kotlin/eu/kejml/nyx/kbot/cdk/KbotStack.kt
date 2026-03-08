@@ -16,7 +16,10 @@ import software.amazon.awscdk.services.lambda.Runtime
 import software.constructs.Construct
 
 class KbotStack(scope: Construct, id: String, props: StackProps) : Stack(scope, id, props) {
-    
+
+    private val jarPath = "../build/libs/nyx-kbot-1.0-SNAPSHOT-all.jar"
+    private val deploymentTime = java.time.Instant.now().toString()
+
     init {
         // Parameter to control table creation
         val createTable = CfnParameter.Builder.create(this, "CreateTable")
@@ -25,12 +28,12 @@ class KbotStack(scope: Construct, id: String, props: StackProps) : Stack(scope, 
             .allowedValues(listOf("true", "false"))
             .description("Whether to create the DynamoDB table (false to use existing)")
             .build()
-            
+
         // Condition for table creation
         val shouldCreateTable = CfnCondition.Builder.create(this, "ShouldCreateTable")
             .expression(Fn.conditionEquals(createTable, "true"))
             .build()
-        
+
         // Create new table conditionally
         val newTable = Table.Builder.create(this, "NewPointsTable")
             .tableName("points")
@@ -45,7 +48,7 @@ class KbotStack(scope: Construct, id: String, props: StackProps) : Stack(scope, 
             .billingMode(BillingMode.PAY_PER_REQUEST)
             .removalPolicy(RemovalPolicy.RETAIN)
             .build()
-        
+
         // Add local secondary indexes to new table
         newTable.addLocalSecondaryIndex(LocalSecondaryIndexProps.builder()
             .indexName("dateTimeIndex")
@@ -56,7 +59,7 @@ class KbotStack(scope: Construct, id: String, props: StackProps) : Stack(scope, 
             .projectionType(ProjectionType.INCLUDE)
             .nonKeyAttributes(listOf("postId", "givenTo"))
             .build())
-            
+
         newTable.addLocalSecondaryIndex(LocalSecondaryIndexProps.builder()
             .indexName("lastId")
             .sortKey(Attribute.builder()
@@ -65,72 +68,14 @@ class KbotStack(scope: Construct, id: String, props: StackProps) : Stack(scope, 
                 .build())
             .projectionType(ProjectionType.KEYS_ONLY)
             .build())
-            
+
         // Apply condition to the new table
         (newTable.node.defaultChild as CfnTable).cfnOptions.condition = shouldCreateTable
-        
+
         // Always use Table.fromTableName for permissions - this works whether table exists or will be created
-        // The table name "points" will be the same regardless of whether it's existing or newly created
         val pointsTable = Table.fromTableName(this, "PointsTableReference", "points")
 
-        // Lambda functions
-        val lambdaEnvironment = mapOf(
-            "TABLE_NAME" to pointsTable.tableName
-        )
-        
-        val hourlyUpdateFunction = Function.Builder.create(this, "HourlyUpdateFunction")
-            .runtime(Runtime.JAVA_21)
-            .handler(HourlyUpdateHandler::class.java.name)
-            .code(Code.fromAsset("../build/libs/nyx-kbot-1.0-SNAPSHOT-all.jar"))
-            .timeout(Duration.minutes(15))
-            .memorySize(512)
-            .environment(lambdaEnvironment)
-            .build()
-
-        val monthlySummaryFunction = Function.Builder.create(this, "MonthlySummaryFunction")
-            .runtime(Runtime.JAVA_21)
-            .handler(MonthlySummaryHandler::class.java.name)
-            .code(Code.fromAsset("../build/libs/nyx-kbot-1.0-SNAPSHOT-all.jar"))
-            .timeout(Duration.minutes(15))
-            .memorySize(512)
-            .environment(lambdaEnvironment)
-            .build()
-
-        val yearlySummaryFunction = Function.Builder.create(this, "YearlySummaryFunction")
-            .runtime(Runtime.JAVA_21)
-            .handler(YearlySummaryHandler::class.java.name)
-            .code(Code.fromAsset("../build/libs/nyx-kbot-1.0-SNAPSHOT-all.jar"))
-            .timeout(Duration.minutes(15))
-            .memorySize(512)
-            .environment(lambdaEnvironment)
-            .build()
-
-        val helloFunction = Function.Builder.create(this, "HelloFunction")
-            .runtime(Runtime.JAVA_21)
-            .handler(HelloHandler::class.java.name)
-            .code(Code.fromAsset("../build/libs/nyx-kbot-1.0-SNAPSHOT-all.jar"))
-            .timeout(Duration.seconds(30))
-            .memorySize(256)
-            .environment(lambdaEnvironment)
-            .build()
-
-        val nyxTestFunction = Function.Builder.create(this, "NyxTestFunction")
-            .runtime(Runtime.JAVA_21)
-            .handler(NyxTestHandler::class.java.name)
-            .code(Code.fromAsset("../build/libs/nyx-kbot-1.0-SNAPSHOT-all.jar"))
-            .timeout(Duration.minutes(2))
-            .memorySize(512)
-            .environment(lambdaEnvironment)
-            .build()
-
-        // Grant DynamoDB permissions
-        pointsTable.grantReadWriteData(hourlyUpdateFunction)
-        pointsTable.grantReadWriteData(monthlySummaryFunction)
-        pointsTable.grantReadWriteData(yearlySummaryFunction)
-        pointsTable.grantReadData(helloFunction)
-        pointsTable.grantReadData(nyxTestFunction)
-
-        // Additional permissions for existing table indexes (needed when using Table.fromTableName)
+        // Index policy for all scheduled Lambdas (covers table + indexes)
         val tableArn = "arn:aws:dynamodb:${this.region}:${this.account}:table/points"
         val indexPolicy = PolicyStatement.Builder.create()
             .effect(Effect.ALLOW)
@@ -140,63 +85,55 @@ class KbotStack(scope: Construct, id: String, props: StackProps) : Stack(scope, 
                 "dynamodb:PutItem",
                 "dynamodb:UpdateItem",
                 "dynamodb:DeleteItem",
-                "dynamodb:Scan"
+                "dynamodb:Scan",
             ))
             .resources(listOf(
                 tableArn,
-                "$tableArn/index/*"
+                "$tableArn/index/*",
             ))
             .build()
-            
-        hourlyUpdateFunction.addToRolePolicy(indexPolicy)
-        monthlySummaryFunction.addToRolePolicy(indexPolicy)
-        yearlySummaryFunction.addToRolePolicy(indexPolicy)
+
+        // Scheduled Lambdas — one set per discussion
+        createDiscussionLambdas("PoznejPcHru", 11354L, 68695L, 68810L, pointsTable, indexPolicy, enabled = true)
+        createDiscussionLambdas("ZabavnyKviz", 7045L, TODO_HOME_CONTENT_ID, null, pointsTable, indexPolicy, enabled = true)
+        createDiscussionLambdas("Sandbox", 20310L, 68692L, 54996L, pointsTable, indexPolicy, enabled = false)
+
+        // Non-discussion-specific Lambdas
+        val baseEnv = mapOf("TABLE_NAME" to pointsTable.tableName)
+
+        val helloFunction = Function.Builder.create(this, "HelloFunction")
+            .runtime(Runtime.JAVA_21)
+            .handler(HelloHandler::class.java.name)
+            .code(Code.fromAsset(jarPath))
+            .timeout(Duration.seconds(30))
+            .memorySize(256)
+            .environment(baseEnv)
+            .build()
+
+        val nyxTestFunction = Function.Builder.create(this, "NyxTestFunction")
+            .runtime(Runtime.JAVA_21)
+            .handler(NyxTestHandler::class.java.name)
+            .code(Code.fromAsset(jarPath))
+            .timeout(Duration.minutes(2))
+            .memorySize(512)
+            .environment(baseEnv)
+            .build()
+
+        pointsTable.grantReadData(helloFunction)
+        pointsTable.grantReadData(nyxTestFunction)
         helloFunction.addToRolePolicy(indexPolicy)
         nyxTestFunction.addToRolePolicy(indexPolicy)
-
-        // EventBridge rules for scheduled functions
-        // Note: Adding timestamp in description forces CDK to detect drift and update rules
-        val deploymentTime = java.time.Instant.now().toString()
-
-        Rule.Builder.create(this, "HourlyUpdateRule")
-            .description("Hourly update rule - Last deployed: $deploymentTime")
-            .schedule(Schedule.rate(Duration.hours(1)))
-            .targets(listOf(LambdaFunction(hourlyUpdateFunction)))
-            .build()
-
-        Rule.Builder.create(this, "MonthlySummaryRule")
-            .description("Monthly summary rule - Last deployed: $deploymentTime")
-            .schedule(Schedule.cron(CronOptions.builder()
-                .minute("10")
-                .hour("01")
-                .day("1")
-                .month("2-12")
-                .build()))
-            .targets(listOf(LambdaFunction(monthlySummaryFunction)))
-            .build()
-
-        Rule.Builder.create(this, "YearlySummaryRule")
-            .description("Yearly summary rule - Last deployed: $deploymentTime")
-            .schedule(Schedule.cron(CronOptions.builder()
-                .minute("10")
-                .hour("01")
-                .day("1")
-                .month("1")
-                .build()))
-            .targets(listOf(LambdaFunction(yearlySummaryFunction)))
-            .build()
-
 
         // API Gateway
         val api = RestApi.Builder.create(this, "KbotApi")
             .restApiName("Kbot API")
             .description("Kbot REST API")
             .build()
-            
+
         val helloIntegration = LambdaIntegration(helloFunction)
         api.root.addResource("hello").addMethod("GET", helloIntegration)
-        
-        val nyxTestIntegration = LambdaIntegration(nyxTestFunction, 
+
+        val nyxTestIntegration = LambdaIntegration(nyxTestFunction,
             LambdaIntegrationOptions.builder()
                 .requestTemplates(mapOf(
                     "application/json" to "{\n  \"headers\": {\n    \"X-Amz-Invocation-Type\": \"Event\"\n  }\n}"
@@ -224,5 +161,91 @@ class KbotStack(scope: Construct, id: String, props: StackProps) : Stack(scope, 
             .value(api.url)
             .description("API Gateway URL")
             .build()
+    }
+
+    private fun createDiscussionLambdas(
+        label: String,
+        discussionId: Long,
+        homeContentId: Long,
+        hallOfFameContentId: Long?,
+        table: ITable,
+        indexPolicy: PolicyStatement,
+        enabled: Boolean = true,
+    ) {
+        val env = buildMap {
+            put("TABLE_NAME", table.tableName)
+            put("DISCUSSION_ID", discussionId.toString())
+            put("HOME_CONTENT_ID", homeContentId.toString())
+            hallOfFameContentId?.let { put("HALL_OF_FAME_CONTENT_ID", it.toString()) }
+        }
+
+        val hourly = Function.Builder.create(this, "HourlyUpdateFunction$label")
+            .runtime(Runtime.JAVA_21)
+            .handler(HourlyUpdateHandler::class.java.name)
+            .code(Code.fromAsset(jarPath))
+            .timeout(Duration.minutes(15))
+            .memorySize(512)
+            .environment(env)
+            .build()
+
+        val monthly = Function.Builder.create(this, "MonthlySummaryFunction$label")
+            .runtime(Runtime.JAVA_21)
+            .handler(MonthlySummaryHandler::class.java.name)
+            .code(Code.fromAsset(jarPath))
+            .timeout(Duration.minutes(15))
+            .memorySize(512)
+            .environment(env)
+            .build()
+
+        val yearly = Function.Builder.create(this, "YearlySummaryFunction$label")
+            .runtime(Runtime.JAVA_21)
+            .handler(YearlySummaryHandler::class.java.name)
+            .code(Code.fromAsset(jarPath))
+            .timeout(Duration.minutes(15))
+            .memorySize(512)
+            .environment(env)
+            .build()
+
+        table.grantReadWriteData(hourly)
+        table.grantReadWriteData(monthly)
+        table.grantReadWriteData(yearly)
+        hourly.addToRolePolicy(indexPolicy)
+        monthly.addToRolePolicy(indexPolicy)
+        yearly.addToRolePolicy(indexPolicy)
+
+        if (enabled) {
+            Rule.Builder.create(this, "HourlyUpdateRule$label")
+                .description("Hourly update rule ($label) - Last deployed: $deploymentTime")
+                .schedule(Schedule.rate(Duration.hours(1)))
+                .targets(listOf(LambdaFunction(hourly)))
+                .build()
+
+            Rule.Builder.create(this, "MonthlySummaryRule$label")
+                .description("Monthly summary rule ($label) - Last deployed: $deploymentTime")
+                .schedule(Schedule.cron(CronOptions.builder()
+                    .minute("10")
+                    .hour("01")
+                    .day("1")
+                    .month("2-12")
+                    .build()))
+                .targets(listOf(LambdaFunction(monthly)))
+                .build()
+
+            Rule.Builder.create(this, "YearlySummaryRule$label")
+                .description("Yearly summary rule ($label) - Last deployed: $deploymentTime")
+                .schedule(Schedule.cron(CronOptions.builder()
+                    .minute("10")
+                    .hour("01")
+                    .day("1")
+                    .month("1")
+                    .build()))
+                .targets(listOf(LambdaFunction(yearly)))
+                .build()
+        }
+    }
+
+    companion object {
+        // TODO: Replace with actual home content ID for ZabavnyKviz (discussionId=7045)
+        const val TODO_HOME_CONTENT_ID = 0L
     }
 }
