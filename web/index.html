@@ -165,7 +165,13 @@
                 byDay[day] = (byDay[day] || 0) + 1;
             });
             const sortedDays = Object.keys(byDay).sort();
-            const timeSeriesData = sortedDays.map(d => [new Date(d).getTime(), byDay[d]]);
+            const firstDay = new Date(sortedDays[0]);
+            const lastDay = new Date(sortedDays[sortedDays.length - 1]);
+            const timeSeriesData = [];
+            for (let d = new Date(firstDay); d <= lastDay; d.setDate(d.getDate() + 1)) {
+                const key = d.toISOString().substring(0, 10);
+                timeSeriesData.push([d.getTime(), byDay[key] || 0]);
+            }
 
             Highcharts.stockChart('chart-timeseries', {
                 title: { text: 'Body v čase' },
@@ -200,7 +206,7 @@
         }
 
         const discussionId = getDiscussionId();
-        fetch(`./data/${discussionId}.json`)
+        fetch(`/data/${discussionId}.json`)
             .then(r => {
                 if (!r.ok) throw new Error(`HTTP ${r.status}`);
                 return r.json();
