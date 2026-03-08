@@ -2,6 +2,7 @@ package eu.kejml.nyx.kbot.storage
 
 import kotlinx.datetime.LocalDateTime
 import kotlinx.datetime.toLocalDateTime
+import kotlinx.serialization.Serializable
 import org.slf4j.LoggerFactory
 import software.amazon.awssdk.services.dynamodb.DynamoDbClient
 import software.amazon.awssdk.services.dynamodb.model.AttributeValue
@@ -14,6 +15,7 @@ import software.amazon.awssdk.services.dynamodb.model.ResourceNotFoundException
 
 const val TABLE_NAME = "points"
 
+@Serializable
 data class Point(
     val discussionId: Long,
     val postId: Long,
@@ -21,6 +23,13 @@ data class Point(
     val givenDateTime: LocalDateTime?,
     val questionId: Long?,
     val givenBy: String?,
+)
+
+@Serializable
+data class DiscussionData(
+    val discussionId: Long,
+    val generatedAt: String,
+    val points: List<Point>,
 )
 
 fun fromAttributeValues(input: Map<String, AttributeValue>): Point {
@@ -121,6 +130,28 @@ object Points {
             System.out.format("No item found with the key %s!\n", id.toString())
             null
         }
+    }
+
+    internal fun getPointsFrom(discussionId: Long, from: LocalDateTime): List<Point> {
+        log.info("Getting all points for discussion $discussionId from $from")
+
+        val request = QueryRequest
+            .builder()
+            .tableName(TABLE_NAME)
+            .keyConditionExpression("discussionId = :discussionId")
+            .filterExpression("givenDateTime >= :from")
+            .expressionAttributeValues(
+                mapOf(
+                    ":discussionId" to AttributeValue.builder().n(discussionId.toString()).build(),
+                    ":from" to AttributeValue.builder().s(from.toString()).build(),
+                ),
+            ).build()
+
+        return client
+            .queryPaginator(request)
+            .items()
+            ?.let { item -> item.map { fromAttributeValues(it) } }
+            ?.toList() ?: emptyList()
     }
 
     internal fun getPointsBetween(

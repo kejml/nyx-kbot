@@ -34,6 +34,7 @@ dependencies {
     // AWS SDK
     implementation(platform("software.amazon.awssdk:bom:$awsSdkVersion"))
     implementation("software.amazon.awssdk:dynamodb")
+    implementation("software.amazon.awssdk:s3")
 
     // Logging
     implementation("org.slf4j:slf4j-simple:2.0.17")

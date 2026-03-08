@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Statistiky bodů</title>
+    <script src="https://code.highcharts.com/highcharts.js"></script>
+    <script src="https://code.highcharts.com/modules/accessibility.js"></script>
+    <style>
+        * { box-sizing: border-box; }
+        body { font-family: Arial, sans-serif; margin: 0; padding: 16px; background: #f4f4f4; }
+        h1 { text-align: center; color: #333; }
+        .charts { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; max-width: 1400px; margin: 0 auto; }
+        .chart { background: #fff; border-radius: 4px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+        .chart-full { grid-column: 1 / -1; }
+        #status { text-align: center; color: #666; font-size: 0.9em; margin-bottom: 16px; }
+        @media (max-width: 768px) {
+            .charts { grid-template-columns: 1fr; }
+            .chart-full { grid-column: 1; }
+        }
+    </style>
+</head>
+<body>
+    <h1>Statistiky bodů</h1>
+    <div id="status">Načítám data...</div>
+    <div class="charts">
+        <div id="chart-timeseries" class="chart chart-full" style="height:400px"></div>
+        <div id="chart-dayofweek" class="chart" style="height:350px"></div>
+        <div id="chart-top-receivers" class="chart" style="height:350px"></div>
+        <div id="chart-top-givers" class="chart" style="height:350px"></div>
+    </div>
+
+    <script>
+        const DAY_NAMES = ['Pondělí', 'Úterý', 'Středa', 'Čtvrtek', 'Pátek', 'Sobota', 'Neděle'];
+
+        function getDiscussionId() {
+            const params = new URLSearchParams(window.location.search);
+            return params.get('discussion') || '11354';
+        }
+
+        function topN(counts, n) {
+            return Object.entries(counts)
+                .filter(([k]) => k && k !== 'null')
+                .sort((a, b) => b[1] - a[1])
+                .slice(0, n);
+        }
+
+        function renderCharts(data) {
+            const points = data.points.filter(p => p.givenDateTime);
+
+            document.getElementById('status').textContent =
+                `Diskuze ${data.discussionId} — ${points.length} bodů — vygenerováno ${data.generatedAt}`;
+
+            // --- Points over time (per day) ---
+            const byDay = {};
+            points.forEach(p => {
+                const day = p.givenDateTime.substring(0, 10);
+                byDay[day] = (byDay[day] || 0) + 1;
+            });
+            const sortedDays = Object.keys(byDay).sort();
+            const timeSeriesData = sortedDays.map(d => [new Date(d).getTime(), byDay[d]]);
+
+            Highcharts.chart('chart-timeseries', {
+                title: { text: 'Body v čase' },
+                xAxis: { type: 'datetime', title: { text: 'Datum' } },
+                yAxis: { title: { text: 'Bodů za den' }, min: 0 },
+                tooltip: { xDateFormat: '%Y-%m-%d', valueSuffix: ' b' },
+                series: [{ name: 'Body', data: timeSeriesData, type: 'line', color: '#7cb5ec' }],
+                legend: { enabled: false },
+                credits: { enabled: false },
+            });
+
+            // --- Day of week ---
+            const byDow = [0, 0, 0, 0, 0, 0, 0];
+            points.forEach(p => {
+                const d = new Date(p.givenDateTime.substring(0, 10));
+                byDow[(d.getDay() + 6) % 7]++;
+            });
+
+            Highcharts.chart('chart-dayofweek', {
+                title: { text: 'Body podle dne v týdnu' },
+                xAxis: { categories: DAY_NAMES },
+                yAxis: { title: { text: 'Celkem bodů' }, min: 0 },
+                series: [{ name: 'Body', data: byDow, type: 'column', color: '#90ed7d' }],
+                legend: { enabled: false },
+                credits: { enabled: false },
+            });
+
+            // --- Top receivers ---
+            const receiverCounts = {};
+            points.forEach(p => {
+                if (p.givenTo) receiverCounts[p.givenTo] = (receiverCounts[p.givenTo] || 0) + 1;
+            });
+            const topReceivers = topN(receiverCounts, 20);
+
+            Highcharts.chart('chart-top-receivers', {
+                title: { text: 'Největší příjemci bodů' },
+                xAxis: { categories: topReceivers.map(([k]) => k), labels: { rotation: -45 } },
+                yAxis: { title: { text: 'Přijatých bodů' }, min: 0 },
+                series: [{ name: 'Přijato', data: topReceivers.map(([, v]) => v), type: 'bar', color: '#f7a35c' }],
+                legend: { enabled: false },
+                credits: { enabled: false },
+            });
+
+            // --- Top givers ---
+            const giverCounts = {};
+            points.forEach(p => {
+                if (p.givenBy) giverCounts[p.givenBy] = (giverCounts[p.givenBy] || 0) + 1;
+            });
+            const topGivers = topN(giverCounts, 20);
+
+            Highcharts.chart('chart-top-givers', {
+                title: { text: 'Největší dárci bodů' },
+                xAxis: { categories: topGivers.map(([k]) => k), labels: { rotation: -45 } },
+                yAxis: { title: { text: 'Udělených bodů' }, min: 0 },
+                series: [{ name: 'Uděleno', data: topGivers.map(([, v]) => v), type: 'bar', color: '#8085e9' }],
+                legend: { enabled: false },
+                credits: { enabled: false },
+            });
+        }
+
+        const discussionId = getDiscussionId();
+        fetch(`./data/${discussionId}.json`)
+            .then(r => {
+                if (!r.ok) throw new Error(`HTTP ${r.status}`);
+                return r.json();
+            })
+            .then(renderCharts)
+            .catch(err => {
+                document.getElementById('status').textContent = `Chyba při načítání dat: ${err.message}`;
+                console.error(err);
+            });
+    </script>
+</body>
+</html>
