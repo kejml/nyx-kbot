@@ -60,22 +60,24 @@
 
         let activeDowFilter = null;
         let activeHourFilter = null;
+        let activeReceiverFilter = null;
+        let activeGiverFilter = null;
 
-        function applyDowFilter(points) {
-            if (activeDowFilter === null) return points;
-            return points.filter(p => {
-                const d = new Date(p.givenDateTime.substring(0, 10));
-                return (d.getDay() + 6) % 7 === activeDowFilter;
-            });
-        }
+        // Each filter function only applies its own filter
+        // Charts receive points filtered by all filters EXCEPT their own,
+        // so they always show their full distribution with the active selection highlighted
 
-        function applyHourFilter(points) {
-            if (activeHourFilter === null) return points;
-            return points.filter(p => parseInt(p.givenDateTime.substring(11, 13)) === activeHourFilter);
-        }
-
-        function applyFilters(points) {
-            return applyHourFilter(applyDowFilter(points));
+        function applyFilters(points, { excludeDow = false, excludeHour = false, excludeReceiver = false, excludeGiver = false } = {}) {
+            let filtered = points;
+            if (!excludeDow && activeDowFilter !== null)
+                filtered = filtered.filter(p => (new Date(p.givenDateTime.substring(0, 10)).getDay() + 6) % 7 === activeDowFilter);
+            if (!excludeHour && activeHourFilter !== null)
+                filtered = filtered.filter(p => parseInt(p.givenDateTime.substring(11, 13)) === activeHourFilter);
+            if (!excludeReceiver && activeReceiverFilter !== null)
+                filtered = filtered.filter(p => p.givenTo === activeReceiverFilter);
+            if (!excludeGiver && activeGiverFilter !== null)
+                filtered = filtered.filter(p => p.givenBy === activeGiverFilter);
+            return filtered;
         }
 
         function buildTimeseriesData(points) {
@@ -95,9 +97,6 @@
             }
             return data;
         }
-
-        // Each filter chart receives points filtered by the OTHER active filter (not its own)
-        // so its data reflects cross-filter context, and its own selection is shown via highlighting
 
         function updateDowChart(dowChart, points) {
             const byDow = [0, 0, 0, 0, 0, 0, 0];
@@ -123,31 +122,39 @@
             })), true);
         }
 
-        function updateTopCharts(points, receiversChart, giversChart) {
-            const receiverCounts = {};
+        function updateReceiversChart(receiversChart, points) {
+            const counts = {};
             points.forEach(p => {
-                if (p.givenTo) receiverCounts[p.givenTo] = (receiverCounts[p.givenTo] || 0) + 1;
+                if (p.givenTo) counts[p.givenTo] = (counts[p.givenTo] || 0) + 1;
             });
-            const topReceivers = topN(receiverCounts, 20);
-            receiversChart.xAxis[0].setCategories(topReceivers.map(([k]) => k));
-            receiversChart.series[0].setData(topReceivers.map(([, v]) => v), true);
-            receiversChart.setSize(null, topReceivers.length * 20 + 100);
-
-            const giverCounts = {};
-            points.forEach(p => {
-                if (p.givenBy) giverCounts[p.givenBy] = (giverCounts[p.givenBy] || 0) + 1;
-            });
-            const topGivers = topN(giverCounts, 20);
-            giversChart.xAxis[0].setCategories(topGivers.map(([k]) => k));
-            giversChart.series[0].setData(topGivers.map(([, v]) => v), true);
-            giversChart.setSize(null, topGivers.length * 20 + 100);
+            const top = topN(counts, 20);
+            receiversChart.xAxis[0].setCategories(top.map(([k]) => k));
+            receiversChart.series[0].setData(top.map(([k, v]) => ({
+                y: v,
+                color: activeReceiverFilter === null || k === activeReceiverFilter ? '#f7a35c' : 'rgba(247,163,92,0.3)',
+            })), true);
+            receiversChart.setSize(null, top.length * 20 + 100);
         }
 
-        // Refreshes all secondary charts based on current filters + time range
+        function updateGiversChart(giversChart, points) {
+            const counts = {};
+            points.forEach(p => {
+                if (p.givenBy) counts[p.givenBy] = (counts[p.givenBy] || 0) + 1;
+            });
+            const top = topN(counts, 20);
+            giversChart.xAxis[0].setCategories(top.map(([k]) => k));
+            giversChart.series[0].setData(top.map(([k, v]) => ({
+                y: v,
+                color: activeGiverFilter === null || k === activeGiverFilter ? '#8085e9' : 'rgba(128,133,233,0.3)',
+            })), true);
+            giversChart.setSize(null, top.length * 20 + 100);
+        }
+
         function refreshSecondaryCharts(timeFiltered, dowChart, hourlyChart, receiversChart, giversChart) {
-            updateDowChart(dowChart, applyHourFilter(timeFiltered));
-            updateHourlyChart(hourlyChart, applyDowFilter(timeFiltered));
-            updateTopCharts(applyFilters(timeFiltered), receiversChart, giversChart);
+            updateDowChart(dowChart, applyFilters(timeFiltered, { excludeDow: true }));
+            updateHourlyChart(hourlyChart, applyFilters(timeFiltered, { excludeHour: true }));
+            updateReceiversChart(receiversChart, applyFilters(timeFiltered, { excludeReceiver: true }));
+            updateGiversChart(giversChart, applyFilters(timeFiltered, { excludeGiver: true }));
         }
 
         function renderCharts(data) {
@@ -167,6 +174,12 @@
                 });
             }
 
+            function onFilterChange() {
+                const timeFiltered = getTimeFiltered();
+                refreshSecondaryCharts(timeFiltered, dowChart, hourlyChart, receiversChart, giversChart);
+                stockChart.series[0].setData(buildTimeseriesData(applyFilters(allPoints)), true);
+            }
+
             const dowChart = Highcharts.chart('chart-dayofweek', {
                 title: { text: 'Body podle dne v týdnu' },
                 xAxis: { categories: DAY_NAMES },
@@ -178,9 +191,7 @@
                             events: {
                                 click: function () {
                                     activeDowFilter = activeDowFilter === this.index ? null : this.index;
-                                    const timeFiltered = getTimeFiltered();
-                                    refreshSecondaryCharts(timeFiltered, dowChart, hourlyChart, receiversChart, giversChart);
-                                    stockChart.series[0].setData(buildTimeseriesData(applyFilters(allPoints)), true);
+                                    onFilterChange();
                                 },
                             },
                         },
@@ -207,9 +218,7 @@
                             events: {
                                 click: function () {
                                     activeHourFilter = activeHourFilter === this.index ? null : this.index;
-                                    const timeFiltered = getTimeFiltered();
-                                    refreshSecondaryCharts(timeFiltered, dowChart, hourlyChart, receiversChart, giversChart);
-                                    stockChart.series[0].setData(buildTimeseriesData(applyFilters(allPoints)), true);
+                                    onFilterChange();
                                 },
                             },
                         },
@@ -231,6 +240,20 @@
                 title: { text: 'Obdržené body' },
                 xAxis: { categories: [], labels: { rotation: 0 } },
                 yAxis: { title: { text: 'Přijatých bodů' }, min: 0 },
+                plotOptions: {
+                    series: {
+                        cursor: 'pointer',
+                        point: {
+                            events: {
+                                click: function () {
+                                    const name = this.series.xAxis.categories[this.index];
+                                    activeReceiverFilter = activeReceiverFilter === name ? null : name;
+                                    onFilterChange();
+                                },
+                            },
+                        },
+                    },
+                },
                 series: [{ name: 'Přijato', data: [], type: 'bar', color: '#f7a35c' }],
                 legend: { enabled: false },
                 credits: { enabled: false },
@@ -240,6 +263,20 @@
                 title: { text: 'Udělené body' },
                 xAxis: { categories: [], labels: { rotation: 0 } },
                 yAxis: { title: { text: 'Udělených bodů' }, min: 0 },
+                plotOptions: {
+                    series: {
+                        cursor: 'pointer',
+                        point: {
+                            events: {
+                                click: function () {
+                                    const name = this.series.xAxis.categories[this.index];
+                                    activeGiverFilter = activeGiverFilter === name ? null : name;
+                                    onFilterChange();
+                                },
+                            },
+                        },
+                    },
+                },
                 series: [{ name: 'Uděleno', data: [], type: 'bar', color: '#8085e9' }],
                 legend: { enabled: false },
                 credits: { enabled: false },
