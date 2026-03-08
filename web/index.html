@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Statistiky bodů</title>
     <script src="https://code.highcharts.com/stock/highstock.js"></script>
+    <script src="https://code.highcharts.com/highcharts-more.js"></script>
     <script src="https://code.highcharts.com/modules/accessibility.js"></script>
     <style>
         * { box-sizing: border-box; }
@@ -26,6 +27,7 @@
     <div class="charts">
         <div id="chart-timeseries" class="chart chart-full" style="height:400px"></div>
         <div id="chart-dayofweek" class="chart" style="height:350px"></div>
+        <div id="chart-hourly" class="chart" style="height:350px"></div>
         <div id="chart-top-receivers" class="chart"></div>
         <div id="chart-top-givers" class="chart"></div>
     </div>
@@ -45,7 +47,7 @@
                 .slice(0, n);
         }
 
-        function updateSecondaryCharts(points, dowChart, receiversChart, giversChart) {
+        function updateSecondaryCharts(points, dowChart, hourlyChart, receiversChart, giversChart) {
             // --- Day of week ---
             const byDow = [0, 0, 0, 0, 0, 0, 0];
             points.forEach(p => {
@@ -53,6 +55,15 @@
                 byDow[(d.getDay() + 6) % 7]++;
             });
             dowChart.series[0].setData(byDow, true);
+
+            // --- Hour of day ---
+            const byHour = Array(24).fill(0);
+            points.forEach(p => {
+                const hour = parseInt(p.givenDateTime.substring(11, 13));
+                byHour[hour]++;
+            });
+            hourlyChart.yAxis[0].setExtremes(0, Math.max(...byHour), true, false, { endOnTick: false });
+            hourlyChart.series[0].setData(byHour, true);
 
             // --- Top receivers ---
             const receiverCounts = {};
@@ -91,6 +102,27 @@
                 credits: { enabled: false },
             });
 
+            const hourlyChart = Highcharts.chart('chart-hourly', {
+                chart: { polar: true },
+                title: { text: 'Body podle hodiny' },
+                xAxis: {
+                    categories: ['00','01','02','03','04','05','06','07','08','09','10','11',
+                                 '12','13','14','15','16','17','18','19','20','21','22','23'],
+                    tickmarkPlacement: 'on',
+                },
+                yAxis: { min: 0, max: 1, endOnTick: false, maxPadding: 0, gridLineInterpolation: 'polygon', title: { text: '' }, labels: { enabled: false } },
+                series: [{
+                    name: 'Body',
+                    data: Array(24).fill(0),
+                    type: 'column',
+                    color: '#ffd700',
+                    pointPadding: 0,
+                    groupPadding: 0,
+                }],
+                legend: { enabled: false },
+                credits: { enabled: false },
+            });
+
             const receiversChart = Highcharts.chart('chart-top-receivers', {
                 title: { text: 'Největší příjemci bodů' },
                 xAxis: { categories: [], labels: { rotation: 0 } },
@@ -110,7 +142,7 @@
             });
 
             // Populate secondary charts with full data initially
-            updateSecondaryCharts(points, dowChart, receiversChart, giversChart);
+            updateSecondaryCharts(points, dowChart, hourlyChart, receiversChart, giversChart);
 
             // --- Points over time (per day) ---
             const byDay = {};
@@ -141,7 +173,7 @@
                                 const t = new Date(p.givenDateTime.substring(0, 10)).getTime();
                                 return t >= e.min && t <= e.max;
                             });
-                            updateSecondaryCharts(filtered, dowChart, receiversChart, giversChart);
+                            updateSecondaryCharts(filtered, dowChart, hourlyChart, receiversChart, giversChart);
                         },
                     },
                 },
