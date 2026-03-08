@@ -35,9 +35,20 @@
     <script>
         const DAY_NAMES = ['Pondělí', 'Úterý', 'Středa', 'Čtvrtek', 'Pátek', 'Sobota', 'Neděle'];
 
+        const DISCUSSION_NAMES = {
+            '11354': 'Poznej PC hru',
+            '7045': 'Zábavný kvíz',
+        };
+
+        const SLUG_TO_ID = {
+            '/poznej-pc-hru': '11354',
+            '/zabavny-kviz': '7045',
+        };
+
         function getDiscussionId() {
-            const params = new URLSearchParams(window.location.search);
-            return params.get('discussion') || '11354';
+            return SLUG_TO_ID[window.location.pathname]
+                || new URLSearchParams(window.location.search).get('discussion')
+                || '11354';
         }
 
         function topN(counts, n) {
@@ -89,8 +100,11 @@
         function renderCharts(data) {
             const points = data.points.filter(p => p.givenDateTime);
 
+            const discussionName = DISCUSSION_NAMES[String(data.discussionId)] || `Diskuze ${data.discussionId}`;
+            document.title = `Statistiky bodů — ${discussionName}`;
+            document.querySelector('h1').textContent = `Statistiky bodů — ${discussionName}`;
             document.getElementById('status').textContent =
-                `Diskuze ${data.discussionId} — ${points.length} bodů — vygenerováno ${data.generatedAt}`;
+                `${points.length} bodů — vygenerováno ${data.generatedAt}`;
 
             // --- Secondary charts (created first so stock chart can reference them) ---
             const dowChart = Highcharts.chart('chart-dayofweek', {
