@@ -95,7 +95,7 @@ class KbotStack(scope: Construct, id: String, props: StackProps) : Stack(scope, 
 
         // Scheduled Lambdas — one set per discussion
         createDiscussionLambdas("PoznejPcHru", 11354L, 68695L, 68810L, pointsTable, indexPolicy, enabled = true)
-        createDiscussionLambdas("ZabavnyKviz", 7045L, TODO_HOME_CONTENT_ID, null, pointsTable, indexPolicy, enabled = true)
+        createDiscussionLambdas("ZabavnyKviz", 7045L, null, null, pointsTable, indexPolicy, enabled = true)
         createDiscussionLambdas("Sandbox", 20310L, 68692L, 54996L, pointsTable, indexPolicy, enabled = false)
 
         // Non-discussion-specific Lambdas
@@ -166,7 +166,7 @@ class KbotStack(scope: Construct, id: String, props: StackProps) : Stack(scope, 
     private fun createDiscussionLambdas(
         label: String,
         discussionId: Long,
-        homeContentId: Long,
+        homeContentId: Long?,
         hallOfFameContentId: Long?,
         table: ITable,
         indexPolicy: PolicyStatement,
@@ -175,7 +175,7 @@ class KbotStack(scope: Construct, id: String, props: StackProps) : Stack(scope, 
         val env = buildMap {
             put("TABLE_NAME", table.tableName)
             put("DISCUSSION_ID", discussionId.toString())
-            put("HOME_CONTENT_ID", homeContentId.toString())
+            homeContentId?.let { put("HOME_CONTENT_ID", it.toString()) }
             hallOfFameContentId?.let { put("HALL_OF_FAME_CONTENT_ID", it.toString()) }
         }
 
@@ -244,8 +244,4 @@ class KbotStack(scope: Construct, id: String, props: StackProps) : Stack(scope, 
         }
     }
 
-    companion object {
-        // TODO: Replace with actual home content ID for ZabavnyKviz (discussionId=7045)
-        const val TODO_HOME_CONTENT_ID = 0L
-    }
 }

@@ -18,12 +18,12 @@ import kotlin.time.Duration.Companion.days
 
 class HourlyUpdateHandler : RequestHandler<ScheduledEvent, String> {
     private val discussionId = System.getenv("DISCUSSION_ID").toLong()
-    private val contentId = System.getenv("HOME_CONTENT_ID").toLong()
+    private val contentId = System.getenv("HOME_CONTENT_ID")?.toLongOrNull()
 
     override fun handleRequest(input: ScheduledEvent, context: Context): String {
         context.logger.log("Starting hourly points update")
         val foundPoints = readPointsFromDiscussion(discussionId)
-        if (foundPoints > 0) {
+        if (foundPoints > 0 && contentId != null) {
             context.logger.log("Found $foundPoints points, updating home")
             val today = Clock.System.now().minus(1.days).toLocalDateTime(TimeZone.UTC)
             updateHome(discussionId, contentId, today.year)
@@ -46,7 +46,6 @@ class MonthlySummaryHandler : RequestHandler<ScheduledEvent, String> {
 
 class YearlySummaryHandler : RequestHandler<ScheduledEvent, String> {
     private val discussionId = System.getenv("DISCUSSION_ID").toLong()
-    private val contentId = System.getenv("HOME_CONTENT_ID").toLong()
     private val hallOfFameContentId = System.getenv("HALL_OF_FAME_CONTENT_ID")?.toLongOrNull()
 
     override fun handleRequest(input: ScheduledEvent, context: Context): String {
