@@ -138,7 +138,7 @@
             });
 
             const receiversChart = Highcharts.chart('chart-top-receivers', {
-                title: { text: 'Největší příjemci bodů' },
+                title: { text: 'Obdržené body' },
                 xAxis: { categories: [], labels: { rotation: 0 } },
                 yAxis: { title: { text: 'Přijatých bodů' }, min: 0 },
                 series: [{ name: 'Přijato', data: [], type: 'bar', color: '#f7a35c' }],
@@ -147,7 +147,7 @@
             });
 
             const giversChart = Highcharts.chart('chart-top-givers', {
-                title: { text: 'Největší dárci bodů' },
+                title: { text: 'Udělené body' },
                 xAxis: { categories: [], labels: { rotation: 0 } },
                 yAxis: { title: { text: 'Udělených bodů' }, min: 0 },
                 series: [{ name: 'Uděleno', data: [], type: 'bar', color: '#8085e9' }],
