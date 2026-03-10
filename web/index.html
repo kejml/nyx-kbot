@@ -26,12 +26,26 @@
             .charts { grid-template-columns: 1fr; }
             .chart-full { grid-column: 1; }
         }
+        #aggregation-bar { display: flex; align-items: center; gap: 6px; max-width: 1400px; margin: -4px auto 8px; padding: 0 4px; }
+        #aggregation-bar .agg-label { font-size: 0.82em; color: #666; margin-right: 2px; }
+        #aggregation-bar .agg-btn { border: 1px solid #ccc; border-radius: 3px; background: #fff; font-size: 0.82em; padding: 3px 8px; cursor: pointer; }
+        #aggregation-bar .agg-btn:hover { background: #f0f0f0; }
+        #aggregation-bar .agg-btn.active { background: #e8f0ff; border-color: #7cb5ec; color: #2060c0; }
     </style>
 </head>
 <body>
     <h1>Statistiky bodů</h1>
     <div id="status">Načítám data...</div>
     <div id="filter-bar"></div>
+    <div id="aggregation-bar">
+        <span class="agg-label">Agregace:</span>
+        <button class="agg-btn active" data-agg="auto">Auto</button>
+        <button class="agg-btn" data-agg="1d">1D</button>
+        <button class="agg-btn" data-agg="3d">3D</button>
+        <button class="agg-btn" data-agg="1w">1T</button>
+        <button class="agg-btn" data-agg="2w">2T</button>
+        <button class="agg-btn" data-agg="1m">1M</button>
+    </div>
     <div class="charts">
         <div id="chart-timeseries" class="chart chart-full" style="height:400px"></div>
         <div id="chart-dayofweek" class="chart" style="height:350px"></div>
@@ -342,6 +356,28 @@
 
             refreshSecondaryCharts(allPoints, dowChart, hourlyChart, receiversChart, giversChart);
 
+            const autoDataGrouping = {
+                enabled: true, forced: false, approximation: 'sum', groupPixelWidth: 10,
+                units: [['day', [1, 2, 3, 5]], ['week', [1, 2]], ['month', [1, 2, 3]]]
+            };
+
+            function applyAggregation(type) {
+                const units = {
+                    auto: null,
+                    '1d': ['day',   [1]],
+                    '3d': ['day',   [3]],
+                    '1w': ['week',  [1]],
+                    '2w': ['week',  [2]],
+                    '1m': ['month', [1]]
+                };
+                const unit = units[type];
+                stockChart.series[0].update({
+                    dataGrouping: unit
+                        ? { enabled: true, forced: true, approximation: 'sum', units: [unit] }
+                        : autoDataGrouping
+                }, true);
+            }
+
             const stockChart = Highcharts.stockChart('chart-timeseries', {
                 chart: { zoomType: 'x' },
                 title: { text: 'Body v čase' },
@@ -369,9 +405,34 @@
                 },
                 yAxis: { title: { text: 'Bodů za den' }, min: 0 },
                 tooltip: { xDateFormat: '%Y-%m-%d', valueSuffix: ' b' },
-                series: [{ name: 'Body', data: buildTimeseriesData(allPoints, allPoints), type: 'line', color: '#7cb5ec' }],
+                series: [{
+                    name: 'Body',
+                    data: buildTimeseriesData(allPoints, allPoints),
+                    type: 'line',
+                    color: '#7cb5ec',
+                    dataGrouping: autoDataGrouping
+                }],
                 legend: { enabled: false },
                 credits: { enabled: false },
+            });
+
+            const autoBtn = document.querySelector('#aggregation-bar .agg-btn[data-agg="auto"]');
+            const unitLabel = { day: 'D', week: 'T', month: 'M' };
+            function updateAutoLabel() {
+                if (!autoBtn.classList.contains('active')) return;
+                const dg = stockChart.series[0].currentDataGrouping;
+                const label = dg ? `${dg.count}${unitLabel[dg.unitName] || dg.unitName}` : '1D';
+                autoBtn.textContent = `Auto (${label})`;
+            }
+            Highcharts.addEvent(stockChart, 'render', updateAutoLabel);
+            updateAutoLabel();
+
+            document.querySelectorAll('#aggregation-bar .agg-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    document.querySelectorAll('#aggregation-bar .agg-btn').forEach(b => b.classList.remove('active'));
+                    btn.classList.add('active');
+                    applyAggregation(btn.dataset.agg);
+                });
             });
         }
 
