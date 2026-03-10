@@ -36,15 +36,4 @@ if !errorlevel! neq 0 (
 echo Deployment completed successfully!
 cd /d ..
 
-echo Uploading web files to R2...
-for /f "tokens=2 delims==" %%a in ('findstr "r2_endpoint" src\main\resources\secret.properties') do set R2_ENDPOINT=%%a
-for /f "tokens=2 delims==" %%a in ('findstr "r2_bucket_name" src\main\resources\secret.properties') do set R2_BUCKET=%%a
-
-call aws s3 sync web/ s3://%R2_BUCKET%/ --endpoint-url %R2_ENDPOINT% --profile r2
-
-if !errorlevel! neq 0 (
-    echo Web upload to R2 failed!
-    exit /b 1
-)
-
-echo Web files uploaded successfully!
+call deploy-web.bat
