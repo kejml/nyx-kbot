@@ -92,4 +92,4 @@ The codebase follows a serverless architecture with individual Lambda functions:
 - Kotlinx serialization 1.9.0 for JSON parsing
 - AWS SDK 2.34.0 for DynamoDB and S3 (also used for Cloudflare R2 via endpoint override)
 - Strikt for testing assertions
-- Kotlin 2.1.20
+- Kotlin 2.3.10
