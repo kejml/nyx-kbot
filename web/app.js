@@ -469,7 +469,10 @@ function renderCharts(data) {
     const autoBtn = document.querySelector('#aggregation-bar .agg-btn[data-agg="auto"]');
     const unitLabel = { day: 'D', week: 'T', month: 'M' };
     function updateAutoLabel() {
-        if (!autoBtn.classList.contains('active')) return;
+        if (!autoBtn.classList.contains('active')) {
+            autoBtn.textContent = 'Auto';
+            return;
+        }
         const dg = stockChart.series[0].currentDataGrouping;
         const label = dg ? `${dg.count}${unitLabel[dg.unitName] || dg.unitName}` : '1D';
         autoBtn.textContent = `Auto (${label})`;
