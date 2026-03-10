@@ -31,6 +31,15 @@
         #aggregation-bar .agg-btn { border: 1px solid #ccc; border-radius: 3px; background: #fff; font-size: 0.82em; padding: 3px 8px; cursor: pointer; }
         #aggregation-bar .agg-btn:hover { background: #f0f0f0; }
         #aggregation-bar .agg-btn.active { background: #e8f0ff; border-color: #7cb5ec; color: #2060c0; }
+        #stats-section { max-width: 1400px; margin: 0 auto 16px; }
+        #stats-table { width: 100%; border-collapse: collapse; background: #fff;
+            border-radius: 4px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); font-size: 0.88em; }
+        #stats-table th { text-align: left; padding: 8px 12px; background: #f0f0f0;
+            color: #555; font-weight: 600; border-bottom: 1px solid #ddd; }
+        #stats-table td { padding: 6px 12px; border-bottom: 1px solid #f0f0f0; color: #333; }
+        #stats-table tr:last-child td { border-bottom: none; }
+        #stats-table td:nth-child(2) { font-weight: 600; }
+        #stats-table td:nth-child(3) { color: #666; font-size: 0.95em; }
     </style>
 </head>
 <body>
@@ -52,6 +61,12 @@
         <div id="chart-hourly" class="chart" style="height:350px"></div>
         <div id="chart-top-receivers" class="chart"></div>
         <div id="chart-top-givers" class="chart"></div>
+    </div>
+    <div id="stats-section">
+        <table id="stats-table">
+            <thead><tr><th>Metrika</th><th>Hodnota</th><th>Datum</th></tr></thead>
+            <tbody></tbody>
+        </table>
     </div>
 
     <script>
@@ -179,8 +194,115 @@
             updateGiversChart(giversChart, applyFilters(timeFiltered, { excludeGiver: true }));
         }
 
+        function computeStats(allPoints) {
+            // Build byDay map (YYYY-MM-DD → count)
+            const byDay = {};
+            allPoints.forEach(p => {
+                const d = p.givenDateTime.substring(0, 10);
+                byDay[d] = (byDay[d] || 0) + 1;
+            });
+
+            // Sorted array of all days (first → last, filling gaps)
+            const sorted = Object.keys(byDay).sort();
+            if (!sorted.length) return [];
+            const first = new Date(sorted[0]);
+            const last  = new Date(sorted[sorted.length - 1]);
+            const days = [];  // [{date: 'YYYY-MM-DD', count: n}, ...]
+            for (let d = new Date(first); d <= last; d.setDate(d.getDate() + 1)) {
+                const key = d.toISOString().substring(0, 10);
+                days.push({ date: key, count: byDay[key] || 0 });
+            }
+
+            // Helper: Czech date format
+            function fmt(dateStr) {
+                const [y, m, d] = dateStr.split('-');
+                return `${+d}.${+m}.${y}`;
+            }
+            function fmtRange(a, b) {
+                const [ay, am, ad] = a.split('-');
+                const [by, bm, bd] = b.split('-');
+                const left = ay === by ? `${+ad}.${+am}.` : fmt(a);
+                return `${left} – ${fmt(b)}`;
+            }
+
+            // 1. Longest active streak (consecutive days with count > 0)
+            let bestActiveLen = 0, bestActiveStart = '', bestActiveEnd = '';
+            let curLen = 0, curStart = '';
+            days.forEach(({ date, count }) => {
+                if (count > 0) {
+                    if (curLen === 0) curStart = date;
+                    curLen++;
+                    if (curLen > bestActiveLen) {
+                        bestActiveLen = curLen;
+                        bestActiveStart = curStart;
+                        bestActiveEnd = date;
+                    }
+                } else { curLen = 0; }
+            });
+
+            // 2. Longest quiet streak (consecutive days with count === 0)
+            let bestQuietLen = 0, bestQuietStart = '', bestQuietEnd = '';
+            curLen = 0; curStart = '';
+            days.forEach(({ date, count }) => {
+                if (count === 0) {
+                    if (curLen === 0) curStart = date;
+                    curLen++;
+                    if (curLen > bestQuietLen) {
+                        bestQuietLen = curLen;
+                        bestQuietStart = curStart;
+                        bestQuietEnd = date;
+                    }
+                } else { curLen = 0; }
+            });
+
+            // 3. Busiest single day
+            const busiestDay = days.reduce((a, b) => b.count > a.count ? b : a);
+
+            // 4. Best 7-day sliding window
+            let best7 = 0, best7Start = '', best7End = '';
+            let win = 0;
+            for (let i = 0; i < days.length; i++) {
+                win += days[i].count;
+                if (i >= 7) win -= days[i - 7].count;
+                const windowSize = Math.min(i + 1, 7);
+                if (windowSize === 7 && win > best7) {
+                    best7 = win;
+                    best7Start = days[i - 6].date;
+                    best7End   = days[i].date;
+                }
+            }
+
+            // 5. Best calendar month
+            const byMonth = {};
+            days.forEach(({ date, count }) => {
+                const m = date.substring(0, 7); // YYYY-MM
+                byMonth[m] = (byMonth[m] || 0) + count;
+            });
+            const MONTH_NAMES = ['', 'Leden','Únor','Březen','Duben','Květen','Červen',
+                                 'Červenec','Srpen','Září','Říjen','Listopad','Prosinec'];
+            const bestMonthKey = Object.keys(byMonth).reduce((a, b) => byMonth[b] > byMonth[a] ? b : a);
+            const [bmy, bmm] = bestMonthKey.split('-');
+            const bestMonthLabel = `${MONTH_NAMES[+bmm]} ${bmy}`;
+
+            return [
+                { metric: 'Nejdelší aktivní série',       value: `${bestActiveLen} dní`,  date: fmtRange(bestActiveStart, bestActiveEnd) },
+                { metric: 'Nejdelší pauza bez bodu',       value: `${bestQuietLen} dní`,   date: fmtRange(bestQuietStart, bestQuietEnd) },
+                { metric: 'Nejvíce bodů za den',           value: `${busiestDay.count} bodů`, date: fmt(busiestDay.date) },
+                { metric: 'Nejvíce bodů za týden',         value: `${best7} bodů`,         date: fmtRange(best7Start, best7End) },
+                { metric: 'Nejaktivnější měsíc',           value: `${byMonth[bestMonthKey]} bodů`, date: bestMonthLabel },
+            ];
+        }
+
         function renderCharts(data) {
             const allPoints = data.points.filter(p => p.givenDateTime);
+
+            const stats = computeStats(allPoints);
+            const tbody = document.querySelector('#stats-table tbody');
+            stats.forEach(({ metric, value, date }) => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `<td>${metric}</td><td>${value}</td><td>${date}</td>`;
+                tbody.appendChild(tr);
+            });
 
             const discussionName = DISCUSSION_NAMES[String(data.discussionId)] || `Diskuze ${data.discussionId}`;
             document.title = `Statistiky bodů — ${discussionName}`;
