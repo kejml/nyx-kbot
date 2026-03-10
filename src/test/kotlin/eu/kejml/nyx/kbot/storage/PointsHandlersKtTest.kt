@@ -37,6 +37,7 @@ internal class PointsHandlersKtTest {
             """<a href="https://nyx.cz" data-id=42>UZIVATEL</a>: <b>     BOD      </b>""",
             """<a href="https://nyx.cz" data-id=42>UZIVATEL</a>: <b> <em>BOD</em> </b>""",
             """<a href="https://nyx.cz" data-id=42>UZIVATEL</a>: <b><em> BOD </em></b>""",
+            """<a href="https://nyx.cz" data-id=42>UZIVATEL</a> <b>BOD</b>""",
         ],
     )
     fun `parsing single point`(postContent: String) {
