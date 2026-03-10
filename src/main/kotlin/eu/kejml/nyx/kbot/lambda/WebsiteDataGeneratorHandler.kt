@@ -22,12 +22,14 @@ class WebsiteDataGeneratorHandler : RequestHandler<ScheduledEvent, String> {
     private val bucketName = System.getenv("R2_BUCKET_NAME")
     private val s3Client = S3Client.builder()
         .endpointOverride(URI.create(System.getenv("R2_ENDPOINT")))
-        .credentialsProvider(StaticCredentialsProvider.create(
-            AwsBasicCredentials.create(
-                System.getenv("R2_ACCESS_KEY_ID"),
-                System.getenv("R2_SECRET_ACCESS_KEY"),
-            )
-        ))
+        .credentialsProvider(
+            StaticCredentialsProvider.create(
+                AwsBasicCredentials.create(
+                    System.getenv("R2_ACCESS_KEY_ID"),
+                    System.getenv("R2_SECRET_ACCESS_KEY"),
+                ),
+            ),
+        )
         .region(Region.of("auto"))
         .build()
 
