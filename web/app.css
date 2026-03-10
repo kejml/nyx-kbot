@@ -1,0 +1,32 @@
+* { box-sizing: border-box; }
+body { font-family: Arial, sans-serif; margin: 0; padding: 16px; background: #f4f4f4; }
+h1 { text-align: center; color: #333; }
+.charts { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; max-width: 1400px; margin: 0 auto; }
+.chart { background: #fff; border-radius: 4px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+.chart-full { grid-column: 1 / -1; }
+#status { text-align: center; color: #666; font-size: 0.9em; margin-bottom: 8px; }
+#filter-bar { display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 6px; min-height: 32px; margin-bottom: 12px; }
+.filter-tag { display: inline-flex; align-items: center; gap: 4px; background: #fff; border: 1px solid #ccc; border-radius: 14px; padding: 3px 10px 3px 12px; font-size: 0.82em; color: #333; }
+.filter-tag .label { opacity: 0.6; font-size: 0.9em; margin-right: 2px; }
+.filter-tag button { background: none; border: none; cursor: pointer; font-size: 1em; line-height: 1; padding: 0 0 1px; color: #888; }
+.filter-tag button:hover { color: #c00; }
+#btn-reset-all { background: #e55; border: none; border-radius: 14px; color: #fff; font-size: 0.82em; padding: 4px 12px; cursor: pointer; }
+#btn-reset-all:hover { background: #c00; }
+@media (max-width: 768px) {
+    .charts { grid-template-columns: 1fr; }
+    .chart-full { grid-column: 1; }
+}
+#aggregation-bar { display: flex; align-items: center; gap: 6px; max-width: 1400px; margin: -4px auto 8px; padding: 0 4px; }
+#aggregation-bar .agg-label { font-size: 0.82em; color: #666; margin-right: 2px; }
+#aggregation-bar .agg-btn { border: 1px solid #ccc; border-radius: 3px; background: #fff; font-size: 0.82em; padding: 3px 8px; cursor: pointer; }
+#aggregation-bar .agg-btn:hover { background: #f0f0f0; }
+#aggregation-bar .agg-btn.active { background: #e8f0ff; border-color: #7cb5ec; color: #2060c0; }
+#stats-section { max-width: 1400px; margin: 0 auto 16px; }
+#stats-table { width: 100%; border-collapse: collapse; background: #fff;
+    border-radius: 4px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); font-size: 0.88em; }
+#stats-table th { text-align: left; padding: 8px 12px; background: #f0f0f0;
+    color: #555; font-weight: 600; border-bottom: 1px solid #ddd; }
+#stats-table td { padding: 6px 12px; border-bottom: 1px solid #f0f0f0; color: #333; }
+#stats-table tr:last-child td { border-bottom: none; }
+#stats-table td:nth-child(2) { font-weight: 600; }
+#stats-table td:nth-child(3) { color: #666; font-size: 0.95em; }
