@@ -97,6 +97,16 @@ object NyxClient {
         ),
     )
 
+    suspend fun sendMail(recipient: String, message: String): String =
+        nyxPost(
+            endpoint = "mail/send",
+            content = mapOf(
+                "recipient" to recipient,
+                "message" to message,
+                "format" to PostFormat.HTML.apiString,
+            ),
+        )
+
     suspend fun ratePost(
         discussionId: Long,
         postId: Long,

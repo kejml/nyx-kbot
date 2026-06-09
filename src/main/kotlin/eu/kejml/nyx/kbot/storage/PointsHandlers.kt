@@ -82,8 +82,24 @@ fun readPointsFromDiscussion(
             if (Points.pointExists(point.discussionId, point.questionId!!)) {
                 val myRating = NyxClient.getMyRating(discussionId, point.postId)
                 if (myRating != RatingAction.NEGATIVE && myRating != RatingAction.NEGATIVE_VISIBLE) {
-                    log.info("Duplicate BOD for questionId ${point.questionId}, giving negative rating to post ${point.postId}")
+                    log.info("Duplicate BOD for questionId ${point.questionId}, giving negative rating to post ${point.postId}, my rating: $myRating.")
                     NyxClient.ratePost(discussionId, point.postId, RatingAction.NEGATIVE_VISIBLE)
+                    val givenBy = point.givenBy
+                    if (givenBy != null) {
+                        val originalPoint = Points.getPoint(point.discussionId, point.questionId)
+                        val rejectedUrl = "https://nyx.cz/discussion/${point.discussionId}/id/${point.postId}"
+                        val originalUrl = "https://nyx.cz/discussion/${point.discussionId}/id/${originalPoint?.postId ?: point.questionId}"
+                        val questionUrl = "https://nyx.cz/discussion/${point.discussionId}/id/${point.questionId}"
+                        val dmMessage = "Tvůj <b>bod</b> $rejectedUrl nebyl započítán – " +
+                            "bod za $questionUrl byl již dříve udělen v příspěvku $originalUrl ." +
+                            "\n\nDuplicitní bod můžeš smazat."
+                        try {
+                            NyxClient.sendMail(givenBy, dmMessage)
+                            log.info("Sent duplicate rejection DM to $givenBy for post ${point.postId}")
+                        } catch (e: Exception) {
+                            log.error("Failed to send rejection DM to $givenBy for post ${point.postId}", e)
+                        }
+                    }
                 } else {
                     log.info("Post ${point.postId} already rated negatively, skipping")
                 }

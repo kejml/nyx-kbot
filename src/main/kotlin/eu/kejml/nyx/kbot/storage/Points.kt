@@ -91,6 +91,16 @@ object Points {
         }
     }
 
+    internal fun getPoint(discussionId: Long, questionId: Long): Point? {
+        val key = mapOf(
+            "discussionId" to AttributeValue.builder().n(discussionId.toString()).build(),
+            "questionId" to AttributeValue.builder().n(questionId.toString()).build(),
+        )
+        val request = GetItemRequest.builder().tableName(TABLE_NAME).key(key).build()
+        val item = client.getItem(request).item()
+        return if (item.isNotEmpty()) fromAttributeValues(item) else null
+    }
+
     internal fun pointExists(discussionId: Long, questionId: Long): Boolean {
         val key = mapOf(
             "discussionId" to AttributeValue.builder().n(discussionId.toString()).build(),
