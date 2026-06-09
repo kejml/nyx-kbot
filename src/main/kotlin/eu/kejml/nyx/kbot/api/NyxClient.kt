@@ -6,9 +6,6 @@ import io.ktor.client.request.*
 import io.ktor.client.request.forms.*
 import io.ktor.http.*
 import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.JsonObject
-import kotlinx.serialization.json.contentOrNull
-import kotlinx.serialization.json.jsonPrimitive
 import org.slf4j.LoggerFactory
 import java.io.InputStream
 import java.net.URLEncoder
@@ -114,11 +111,10 @@ object NyxClient {
     ): String = nyxPost("discussion/$discussionId/rating/$postId/${action.apiString}")
 
     suspend fun getMyRating(discussionId: Long, postId: Long): RatingAction {
-        val element = json.parseToJsonElement(nyxGet("discussion/$discussionId/rating/$postId"))
-        val myRating = (element as? JsonObject)
-            ?.get("my_rating")
-            ?.jsonPrimitive
-            ?.contentOrNull
+        val params = DiscussionQueryParams(fromId = postId - 1, discussionOrder = DiscussionOrder.NEWER_THAN)
+        val data = getDiscussion(discussionId, params)
+        val discussion = json.decodeFromString<Discussion>(data)
+        val myRating = discussion.posts.find { it.id == postId }?.myRating
         return RatingAction.entries.find { it.apiString == myRating } ?: RatingAction.NONE
     }
 
