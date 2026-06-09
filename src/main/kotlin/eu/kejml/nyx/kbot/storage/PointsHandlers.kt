@@ -1,23 +1,21 @@
 package eu.kejml.nyx.kbot.storage
 
-import eu.kejml.nyx.kbot.api.Discussion
 import eu.kejml.nyx.kbot.api.DiscussionOrder
 import eu.kejml.nyx.kbot.api.DiscussionQueryParams
 import eu.kejml.nyx.kbot.api.NyxClient
+import eu.kejml.nyx.kbot.api.RatingAction
 import kotlinx.coroutines.runBlocking
 import kotlinx.datetime.LocalDateTime
 import kotlinx.datetime.Month
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toInstant
 import kotlinx.datetime.toLocalDateTime
-import kotlinx.serialization.json.Json
 import org.slf4j.LoggerFactory
 import java.time.format.TextStyle
 import java.util.*
 import kotlin.time.Duration.Companion.seconds
 
 private val log = LoggerFactory.getLogger("PointsHandlers")
-private val json = Json { ignoreUnknownKeys = true }
 
 internal data class QuestionIdGivenTo(
     val questionId: Long,
@@ -58,8 +56,7 @@ fun readPointsFromDiscussion(
 ): Int = runBlocking {
     log.info("Saving posts")
     val fromId = Points.getLastPostId(discussionId) ?: startFromPostId
-    val data = NyxClient.getDiscussion(discussionId, DiscussionQueryParams("bod -bodování", fromId))
-    val discussion = json.decodeFromString<Discussion>(data)
+    val discussion = NyxClient.getDiscussion(discussionId, DiscussionQueryParams("bod -bodování", fromId))
     log.info(discussion.toString())
     val saved = mutableListOf<Long>()
     val points = discussion.posts
@@ -77,12 +74,40 @@ fun readPointsFromDiscussion(
             }
         }
         .flatten()
-        .map {
-            saved.add(it.postId)
-            Points.addPoint(it)
-            NyxClient.ratePost(discussionId, it.postId)
+        .map { point ->
+            if (Points.pointExists(point.discussionId, point.questionId!!)) {
+                val myRating = NyxClient.getMyRating(discussionId, point.postId)
+                if (myRating != RatingAction.NEGATIVE && myRating != RatingAction.NEGATIVE_VISIBLE) {
+                    log.info("Duplicate BOD for questionId ${point.questionId}, giving negative rating to post ${point.postId}, my rating: $myRating.")
+                    NyxClient.ratePost(discussionId, point.postId, RatingAction.NEGATIVE_VISIBLE)
+                    val givenBy = point.givenBy
+                    if (givenBy != null) {
+                        val originalPoint = Points.getPoint(point.discussionId, point.questionId)
+                        val rejectedUrl = "https://nyx.cz/discussion/${point.discussionId}/id/${point.postId}"
+                        val originalUrl = "https://nyx.cz/discussion/${point.discussionId}/id/${originalPoint?.postId ?: point.questionId}"
+                        val questionUrl = "https://nyx.cz/discussion/${point.discussionId}/id/${point.questionId}"
+                        val dmMessage = "Tvůj <b>bod</b> $rejectedUrl nebyl započítán – " +
+                            "bod za $questionUrl byl již dříve udělen v příspěvku $originalUrl ." +
+                            "\n\nDuplicitní bod můžeš smazat."
+                        try {
+                            NyxClient.sendMail(givenBy, dmMessage)
+                            log.info("Sent duplicate rejection DM to $givenBy for post ${point.postId}")
+                        } catch (e: Exception) {
+                            log.error("Failed to send rejection DM to $givenBy for post ${point.postId}", e)
+                        }
+                    }
+                } else {
+                    log.info("Post ${point.postId} already rated negatively, skipping")
+                }
+                false
+            } else {
+                saved.add(point.postId)
+                Points.addPoint(point)
+                NyxClient.ratePost(discussionId, point.postId)
+                true
+            }
         }
-        .count()
+        .count { it }
     val logMessage = "Done, latest index was $fromId, saved ${saved.size} new points (${saved.joinToString(", ")})"
     log.info(logMessage)
     points
@@ -91,12 +116,11 @@ fun readPointsFromDiscussion(
 fun List<Point>.validatePointsAndRemoveInvalid(validatePoints: Boolean): List<Point> = if (validatePoints) {
     runBlocking {
         filter { point ->
-            val data = NyxClient
+            val posts = NyxClient
                 .getDiscussion(
                     id = point.discussionId,
                     params = DiscussionQueryParams(fromId = point.postId + 1, discussionOrder = DiscussionOrder.OLDER_THAN),
-                )
-            val posts = json.decodeFromString<Discussion>(data).posts
+                ).posts
             val result = posts.first().id == point.postId
             if (!result) {
                 log.info("Removing point $point - not found in the discussion anymore. (Found only posts with ids: ${posts.map { it.id }}")

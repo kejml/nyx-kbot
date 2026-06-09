@@ -15,4 +15,5 @@ data class Post(
     val username: String,
     val content: String,
     @SerialName("inserted_at") val insertedAt: LocalDateTime,
+    @SerialName("my_rating") val myRating: String? = null,
 )

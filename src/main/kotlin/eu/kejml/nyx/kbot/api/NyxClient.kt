@@ -5,6 +5,7 @@ import io.ktor.client.call.*
 import io.ktor.client.request.*
 import io.ktor.client.request.forms.*
 import io.ktor.http.*
+import kotlinx.serialization.json.Json
 import org.slf4j.LoggerFactory
 import java.io.InputStream
 import java.net.URLEncoder
@@ -29,6 +30,10 @@ enum class RatingAction(
     val apiString: String,
 ) {
     POSITIVE("positive"),
+    NEGATIVE("negative"),
+    NEGATIVE_VISIBLE("negative_visible"),
+    REMOVE("remove"),
+    NONE("none"),
 }
 
 class DiscussionQueryParams(
@@ -53,13 +58,14 @@ object NyxClient {
     private val props = Properties().apply { load(secretStream) }
     private val nyxToken = props["nyx_token"]
     private val client = HttpClient()
+    private val json = Json { ignoreUnknownKeys = true }
 
     private val log = LoggerFactory.getLogger(this.javaClass)
 
     suspend fun getDiscussion(
         id: Long,
         params: DiscussionQueryParams? = null,
-    ): String = nyxGet("discussion/$id${params?.toUrl() ?: ""}")
+    ): Discussion = json.decodeFromString(nyxGet("discussion/$id${params?.toUrl() ?: ""}"))
 
     suspend fun getHome(id: Long): String = nyxGet("discussion/$id/content/home")
 
@@ -88,11 +94,27 @@ object NyxClient {
         ),
     )
 
+    suspend fun sendMail(recipient: String, message: String): String =
+        nyxPost(
+            endpoint = "mail/send",
+            content = mapOf(
+                "recipient" to recipient,
+                "message" to message,
+                "format" to PostFormat.HTML.apiString,
+            ),
+        )
+
     suspend fun ratePost(
         discussionId: Long,
         postId: Long,
         action: RatingAction = RatingAction.POSITIVE,
     ): String = nyxPost("discussion/$discussionId/rating/$postId/${action.apiString}")
+
+    suspend fun getMyRating(discussionId: Long, postId: Long): RatingAction {
+        val params = DiscussionQueryParams(fromId = postId - 1, discussionOrder = DiscussionOrder.NEWER_THAN)
+        val myRating = getDiscussion(discussionId, params).posts.find { it.id == postId }?.myRating
+        return RatingAction.entries.find { it.apiString == myRating } ?: RatingAction.NONE
+    }
 
     private suspend fun nyxGet(endpoint: String): String {
         val urlString = "https://nyx.cz/api/$endpoint"
