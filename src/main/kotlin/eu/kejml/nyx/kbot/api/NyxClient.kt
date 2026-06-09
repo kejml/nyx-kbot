@@ -5,6 +5,10 @@ import io.ktor.client.call.*
 import io.ktor.client.request.*
 import io.ktor.client.request.forms.*
 import io.ktor.http.*
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.contentOrNull
+import kotlinx.serialization.json.jsonPrimitive
 import org.slf4j.LoggerFactory
 import java.io.InputStream
 import java.net.URLEncoder
@@ -29,6 +33,10 @@ enum class RatingAction(
     val apiString: String,
 ) {
     POSITIVE("positive"),
+    NEGATIVE("negative"),
+    NEGATIVE_VISIBLE("negative_visible"),
+    REMOVE("remove"),
+    NONE("none"),
 }
 
 class DiscussionQueryParams(
@@ -53,6 +61,7 @@ object NyxClient {
     private val props = Properties().apply { load(secretStream) }
     private val nyxToken = props["nyx_token"]
     private val client = HttpClient()
+    private val json = Json { ignoreUnknownKeys = true }
 
     private val log = LoggerFactory.getLogger(this.javaClass)
 
@@ -93,6 +102,15 @@ object NyxClient {
         postId: Long,
         action: RatingAction = RatingAction.POSITIVE,
     ): String = nyxPost("discussion/$discussionId/rating/$postId/${action.apiString}")
+
+    suspend fun getMyRating(discussionId: Long, postId: Long): RatingAction {
+        val element = json.parseToJsonElement(nyxGet("discussion/$discussionId/rating/$postId"))
+        val myRating = (element as? JsonObject)
+            ?.get("my_rating")
+            ?.jsonPrimitive
+            ?.contentOrNull
+        return RatingAction.entries.find { it.apiString == myRating } ?: RatingAction.NONE
+    }
 
     private suspend fun nyxGet(endpoint: String): String {
         val urlString = "https://nyx.cz/api/$endpoint"

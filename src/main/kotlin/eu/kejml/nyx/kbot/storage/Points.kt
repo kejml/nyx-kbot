@@ -91,6 +91,18 @@ object Points {
         }
     }
 
+    internal fun pointExists(discussionId: Long, questionId: Long): Boolean {
+        val key = mapOf(
+            "discussionId" to AttributeValue.builder().n(discussionId.toString()).build(),
+            "questionId" to AttributeValue.builder().n(questionId.toString()).build(),
+        )
+        val request = GetItemRequest.builder()
+            .tableName(TABLE_NAME)
+            .key(key)
+            .build()
+        return client.getItem(request).item().isNotEmpty()
+    }
+
     internal fun removePoint(point: Point) {
         val keyToRemove = mapOf<String, AttributeValue>(
             "discussionId" to AttributeValue.builder().n(point.discussionId.toString()).build(),

@@ -4,6 +4,7 @@ import eu.kejml.nyx.kbot.api.Discussion
 import eu.kejml.nyx.kbot.api.DiscussionOrder
 import eu.kejml.nyx.kbot.api.DiscussionQueryParams
 import eu.kejml.nyx.kbot.api.NyxClient
+import eu.kejml.nyx.kbot.api.RatingAction
 import kotlinx.coroutines.runBlocking
 import kotlinx.datetime.LocalDateTime
 import kotlinx.datetime.Month
@@ -77,12 +78,24 @@ fun readPointsFromDiscussion(
             }
         }
         .flatten()
-        .map {
-            saved.add(it.postId)
-            Points.addPoint(it)
-            NyxClient.ratePost(discussionId, it.postId)
+        .map { point ->
+            if (Points.pointExists(point.discussionId, point.questionId!!)) {
+                val myRating = NyxClient.getMyRating(discussionId, point.postId)
+                if (myRating != RatingAction.NEGATIVE && myRating != RatingAction.NEGATIVE_VISIBLE) {
+                    log.info("Duplicate BOD for questionId ${point.questionId}, giving negative rating to post ${point.postId}")
+                    NyxClient.ratePost(discussionId, point.postId, RatingAction.NEGATIVE_VISIBLE)
+                } else {
+                    log.info("Post ${point.postId} already rated negatively, skipping")
+                }
+                false
+            } else {
+                saved.add(point.postId)
+                Points.addPoint(point)
+                NyxClient.ratePost(discussionId, point.postId)
+                true
+            }
         }
-        .count()
+        .count { it }
     val logMessage = "Done, latest index was $fromId, saved ${saved.size} new points (${saved.joinToString(", ")})"
     log.info(logMessage)
     points
