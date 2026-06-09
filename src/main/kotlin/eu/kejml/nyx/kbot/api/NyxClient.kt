@@ -65,7 +65,7 @@ object NyxClient {
     suspend fun getDiscussion(
         id: Long,
         params: DiscussionQueryParams? = null,
-    ): String = nyxGet("discussion/$id${params?.toUrl() ?: ""}")
+    ): Discussion = json.decodeFromString(nyxGet("discussion/$id${params?.toUrl() ?: ""}"))
 
     suspend fun getHome(id: Long): String = nyxGet("discussion/$id/content/home")
 
@@ -112,9 +112,7 @@ object NyxClient {
 
     suspend fun getMyRating(discussionId: Long, postId: Long): RatingAction {
         val params = DiscussionQueryParams(fromId = postId - 1, discussionOrder = DiscussionOrder.NEWER_THAN)
-        val data = getDiscussion(discussionId, params)
-        val discussion = json.decodeFromString<Discussion>(data)
-        val myRating = discussion.posts.find { it.id == postId }?.myRating
+        val myRating = getDiscussion(discussionId, params).posts.find { it.id == postId }?.myRating
         return RatingAction.entries.find { it.apiString == myRating } ?: RatingAction.NONE
     }
 
