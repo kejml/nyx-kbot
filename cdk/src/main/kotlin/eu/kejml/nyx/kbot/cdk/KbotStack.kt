@@ -4,15 +4,15 @@ import eu.kejml.nyx.kbot.lambda.*
 import software.amazon.awscdk.*
 import software.amazon.awscdk.services.apigateway.*
 import software.amazon.awscdk.services.dynamodb.*
-import software.amazon.awscdk.services.events.CronOptions
-import software.amazon.awscdk.services.events.Rule
-import software.amazon.awscdk.services.events.Schedule
-import software.amazon.awscdk.services.events.targets.LambdaFunction
 import software.amazon.awscdk.services.iam.Effect
 import software.amazon.awscdk.services.iam.PolicyStatement
 import software.amazon.awscdk.services.lambda.Code
 import software.amazon.awscdk.services.lambda.Function
 import software.amazon.awscdk.services.lambda.Runtime
+import software.amazon.awscdk.services.scheduler.CronOptionsWithTimezone
+import software.amazon.awscdk.services.scheduler.Schedule
+import software.amazon.awscdk.services.scheduler.ScheduleExpression
+import software.amazon.awscdk.services.scheduler.targets.LambdaInvoke
 import software.constructs.Construct
 
 class KbotStack(scope: Construct, id: String, props: StackProps) : Stack(scope, id, props) {
@@ -311,38 +311,38 @@ class KbotStack(scope: Construct, id: String, props: StackProps) : Stack(scope, 
         webGen.addToRolePolicy(indexPolicy)
 
         if (enabled) {
-            Rule.Builder.create(this, "HourlyUpdateRule$label")
-                .description("Hourly update rule ($label) - Last deployed: $deploymentTime")
-                .schedule(Schedule.rate(Duration.hours(1)))
-                .targets(listOf(LambdaFunction(hourly)))
+            Schedule.Builder.create(this, "HourlyUpdateSchedule$label")
+                .description("Hourly update schedule ($label) - Last deployed: $deploymentTime")
+                .schedule(ScheduleExpression.rate(Duration.hours(1)))
+                .target(LambdaInvoke.Builder.create(hourly).build())
                 .build()
 
-            Rule.Builder.create(this, "MonthlySummaryRule$label")
-                .description("Monthly summary rule ($label) - Last deployed: $deploymentTime")
-                .schedule(Schedule.cron(CronOptions.builder()
+            Schedule.Builder.create(this, "MonthlySummarySchedule$label")
+                .description("Monthly summary schedule ($label) - Last deployed: $deploymentTime")
+                .schedule(ScheduleExpression.cron(CronOptionsWithTimezone.builder()
                     .minute("10")
                     .hour("01")
                     .day("1")
                     .month("2-12")
                     .build()))
-                .targets(listOf(LambdaFunction(monthly)))
+                .target(LambdaInvoke.Builder.create(monthly).build())
                 .build()
 
-            Rule.Builder.create(this, "YearlySummaryRule$label")
-                .description("Yearly summary rule ($label) - Last deployed: $deploymentTime")
-                .schedule(Schedule.cron(CronOptions.builder()
+            Schedule.Builder.create(this, "YearlySummarySchedule$label")
+                .description("Yearly summary schedule ($label) - Last deployed: $deploymentTime")
+                .schedule(ScheduleExpression.cron(CronOptionsWithTimezone.builder()
                     .minute("10")
                     .hour("01")
                     .day("1")
                     .month("1")
                     .build()))
-                .targets(listOf(LambdaFunction(yearly)))
+                .target(LambdaInvoke.Builder.create(yearly).build())
                 .build()
 
-            Rule.Builder.create(this, "WebsiteDataGeneratorRule$label")
-                .description("Website data generator rule ($label) - Last deployed: $deploymentTime")
-                .schedule(Schedule.rate(Duration.hours(1)))
-                .targets(listOf(LambdaFunction(webGen)))
+            Schedule.Builder.create(this, "WebsiteDataGeneratorSchedule$label")
+                .description("Website data generator schedule ($label) - Last deployed: $deploymentTime")
+                .schedule(ScheduleExpression.rate(Duration.hours(1)))
+                .target(LambdaInvoke.Builder.create(webGen).build())
                 .build()
         }
     }
