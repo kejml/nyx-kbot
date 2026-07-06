@@ -8,7 +8,6 @@ import kotlinx.coroutines.runBlocking
 import kotlinx.datetime.Clock
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
-import kotlinx.serialization.json.Json
 import kotlin.time.Duration.Companion.days
 
 suspend fun main() {
@@ -24,15 +23,12 @@ suspend fun main() {
     println(response)
 }
 
-private val json = Json { ignoreUnknownKeys = true }
-
 // SANDBOX
 private val discussionId = 20310L
 private val contentId = 54996L
 
 fun nyxTest(): String = runBlocking {
-//        val data = NyxClient.getDiscussion(discussionId, DiscussionQueryParams(null, 1))
-//        val discussion = json.decodeFromString<Discussion>(data)
+//        val discussion = NyxClient.getDiscussion(discussionId, DiscussionQueryParams(null, 1))
 
     val yesterday = Clock.System
         .now()
