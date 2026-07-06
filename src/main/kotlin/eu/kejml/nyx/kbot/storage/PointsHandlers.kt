@@ -24,20 +24,32 @@ internal data class QuestionIdGivenTo(
     val givenTo: String,
 )
 
-internal fun String.parsePointData(): List<QuestionIdGivenTo> {
+enum class PointType(
+    val keyword: String,
+    vararg excludedWords: String,
+) {
+    BOD("bod", "bodování"),
+    BONUS("bonus"),
+    ;
+
+    val searchText: String = (listOf(keyword) + excludedWords.map { "-$it" }).joinToString(" ")
+}
+
+internal fun String.parsePointData(type: PointType = PointType.BOD): List<QuestionIdGivenTo> {
     // <a class=r data-id=54606485 data-discussion-id=20310 href='/discussion/20310/id/54606485'>DEVNOK</a>: <b>BOD</b>
     // <a href="/discussion/11354/id/47179434" class="r" data-discussion-id=11354 data-id=47179434>KOCMOC</a>: <b><em class='search-match'>BOD</em></b>
+    val keyword = Regex.escape(type.keyword)
     return this
         .split("<br>", "<br/>", "\n")
         .filter {
             log.info("Running regex on $it")
             it.contains(
                 Regex(
-                    """^<a.*data-id.*>.*<(b|strong)> *(<em.*>)? *bod *(</em>)? *</?(b|strong)>""",
+                    """^<a.*data-id.*>.*<(b|strong)> *(<em.*>)? *$keyword *(</em>)? *</?(b|strong)>""",
                     RegexOption.IGNORE_CASE,
                 ),
             ) ||
-                it.matches(Regex("""^<a.*data-id.*>: BOD$""", RegexOption.IGNORE_CASE))
+                it.matches(Regex("""^<a.*data-id.*>: $keyword$""", RegexOption.IGNORE_CASE))
         }.filter {
             log.info("Running second regex on $it")
             it.startsWith("<a")
@@ -55,10 +67,31 @@ internal fun String.parsePointData(): List<QuestionIdGivenTo> {
 fun readPointsFromDiscussion(
     discussionId: Long,
     startFromPostId: Long = 1L,
+): Int = readPointsInternal(
+    discussionId = discussionId,
+    type = PointType.BOD,
+    fromId = Points.getLastPostId(discussionId) ?: startFromPostId,
+    persist = Points::addPoint,
+)
+
+fun readBonusPointsFromDiscussion(
+    discussionId: Long,
+    startFromPostId: Long = 1L,
+): Int = readPointsInternal(
+    discussionId = discussionId,
+    type = PointType.BONUS,
+    fromId = BonusPoints.getLastPostId(discussionId) ?: Points.getFirstPostId(discussionId) ?: startFromPostId,
+    persist = BonusPoints::addBonusPoint,
+)
+
+private fun readPointsInternal(
+    discussionId: Long,
+    type: PointType,
+    fromId: Long,
+    persist: (Point) -> Unit,
 ): Int = runBlocking {
     log.info("Saving posts")
-    val fromId = Points.getLastPostId(discussionId) ?: startFromPostId
-    val data = NyxClient.getDiscussion(discussionId, DiscussionQueryParams("bod -bodování", fromId))
+    val data = NyxClient.getDiscussion(discussionId, DiscussionQueryParams(type.searchText, fromId))
     val discussion = json.decodeFromString<Discussion>(data)
     log.info(discussion.toString())
     val saved = mutableListOf<Long>()
@@ -67,7 +100,7 @@ fun readPointsFromDiscussion(
         .map { post ->
             try {
                 post.content
-                    .parsePointData()
+                    .parsePointData(type)
                     .map {
                         Point(discussionId, post.id, it.givenTo, post.insertedAt, it.questionId, post.username)
                     }.toList()
@@ -79,11 +112,11 @@ fun readPointsFromDiscussion(
         .flatten()
         .map {
             saved.add(it.postId)
-            Points.addPoint(it)
+            persist(it)
             NyxClient.ratePost(discussionId, it.postId)
         }
         .count()
-    val logMessage = "Done, latest index was $fromId, saved ${saved.size} new points (${saved.joinToString(", ")})"
+    val logMessage = "Done, latest index was $fromId, saved ${saved.size} new ${type.name} points (${saved.joinToString(", ")})"
     log.info(logMessage)
     points
 }

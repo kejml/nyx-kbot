@@ -66,6 +66,24 @@ object Points {
         return client.query(request).items()?.let { item -> item.getOrNull(0)?.let { fromAttributeValues(it) }?.postId }
     }
 
+    internal fun getFirstPostId(discussionId: Long): Long? {
+        val request = QueryRequest
+            .builder()
+            .tableName(TABLE_NAME)
+            .indexName("lastId")
+            .keyConditionExpression("discussionId = :discussionId")
+            .expressionAttributeValues(
+                mapOf(
+                    ":discussionId" to AttributeValue.builder().n(discussionId.toString()).build(),
+                ),
+            )
+            .scanIndexForward(true)
+            .limit(1)
+            .build()
+
+        return client.query(request).items()?.let { item -> item.getOrNull(0)?.let { fromAttributeValues(it) }?.postId }
+    }
+
     internal fun addPoint(point: Point) {
         val pointValues = HashMap<String, AttributeValue>()
 

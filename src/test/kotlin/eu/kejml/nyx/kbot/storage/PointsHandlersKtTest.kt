@@ -1,5 +1,6 @@
 package eu.kejml.nyx.kbot.storage
 
+import org.junit.jupiter.api.Test
 import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.ValueSource
 import strikt.api.expectThat
@@ -91,5 +92,115 @@ internal class PointsHandlersKtTest {
             }.any {
                 isEqualTo(QuestionIdGivenTo(43L, "UZIVATEL"))
             }
+    }
+
+    @ParameterizedTest
+    @ValueSource(
+        strings = [
+            """<a data-id=42 href="https://nyx.cz">UZIVATEL</a>: BONUS""",
+            """<a href="https://nyx.cz" data-id=42>UZIVATEL</a>: bonus""",
+            """<a href="https://nyx.cz" data-id=42>UZIVATEL</a>: <b>BONUS</b>""",
+            """<a href="https://nyx.cz" data-id=42>UZIVATEL</a>: <B>Bonus</B>""",
+            """<a href="https://nyx.cz" data-id=42>UZIVATEL</a>: <b><em>BONUS</em></b>""",
+            """<a href="https://nyx.cz" data-id=42>UZIVATEL</a>: Davam <B>bonus</B> a zadej""",
+            """<a href="https://nyx.cz" data-id=42>UZIVATEL</a>: <STRONG>bonus</STRONG>""",
+            """<a href="https://nyx.cz" data-id=42>UZIVATEL</a>: <b>BONUS<b>""",
+            """<a href="https://nyx.cz" data-id=42>UZIVATEL</a>: <b> BONUS </b>""",
+            """<a href="https://nyx.cz" data-id=42>UZIVATEL</a> <b>BONUS</b>""",
+            "Text pred\n<a href=\"https://nyx.cz\" data-id=42>UZIVATEL</a>: <b>BONUS</b>\ni text pod",
+        ],
+    )
+    fun `parsing single bonus point`(postContent: String) {
+        val pointData = postContent.parsePointData(PointType.BONUS)
+
+        expectThat(pointData)
+            .hasSize(1)
+            .first()
+            .isEqualTo(QuestionIdGivenTo(42L, "UZIVATEL"))
+    }
+
+    @ParameterizedTest
+    @ValueSource(
+        strings = [
+            "bonus",
+            "Random bonus",
+            "Random <b>BONUS</b>",
+            "<b>BONUS</b>",
+            """<a href="https://nyx.cz">UZIVATEL</a>: <b>BONUS</b>""",
+            "UZIVATEL: <B>BONUS</B>",
+            "<a href=\"https://nyx.cz\" data-id=42>UZIVATEL</a>:\n <b>BONUS</b>",
+        ],
+    )
+    fun `not parsing invalid bonus point`(postContent: String) {
+        val pointData = postContent.parsePointData(PointType.BONUS)
+
+        expectThat(pointData)
+            .isEmpty()
+    }
+
+    @ParameterizedTest
+    @ValueSource(
+        strings = [
+            """<a href="https://nyx.cz" data-id=42>UZIVATEL</a>: BOD""",
+            """<a href="https://nyx.cz" data-id=42>UZIVATEL</a>: <b>BOD</b>""",
+        ],
+    )
+    fun `not parsing regular point as bonus`(postContent: String) {
+        val pointData = postContent.parsePointData(PointType.BONUS)
+
+        expectThat(pointData)
+            .isEmpty()
+    }
+
+    @ParameterizedTest
+    @ValueSource(
+        strings = [
+            """<a href="https://nyx.cz" data-id=42>UZIVATEL</a>: BONUS""",
+            """<a href="https://nyx.cz" data-id=42>UZIVATEL</a>: <b>BONUS</b>""",
+        ],
+    )
+    fun `not parsing bonus point as regular`(postContent: String) {
+        val pointData = postContent.parsePointData()
+
+        expectThat(pointData)
+            .isEmpty()
+    }
+
+    @Test
+    fun `parsing only matching type from post with both point types`() {
+        val postContent =
+            "<a href=\"https://nyx.cz\" data-id=42>UZIVATEL</a>: <b>BOD</b>\n" +
+                "<a href=\"https://nyx.cz\" data-id=43>UZIVATEL</a>: <b>BONUS</b>"
+
+        expectThat(postContent.parsePointData())
+            .hasSize(1)
+            .first()
+            .isEqualTo(QuestionIdGivenTo(42L, "UZIVATEL"))
+
+        expectThat(postContent.parsePointData(PointType.BONUS))
+            .hasSize(1)
+            .first()
+            .isEqualTo(QuestionIdGivenTo(43L, "UZIVATEL"))
+    }
+
+    @Test
+    fun `line with both keywords counts for both types`() {
+        val postContent = """<a href="https://nyx.cz" data-id=42>UZIVATEL</a>: <b>BOD</b> a <b>BONUS</b>"""
+
+        expectThat(postContent.parsePointData())
+            .hasSize(1)
+            .first()
+            .isEqualTo(QuestionIdGivenTo(42L, "UZIVATEL"))
+
+        expectThat(postContent.parsePointData(PointType.BONUS))
+            .hasSize(1)
+            .first()
+            .isEqualTo(QuestionIdGivenTo(42L, "UZIVATEL"))
+    }
+
+    @Test
+    fun `search text is derived from keyword and excluded words`() {
+        expectThat(PointType.BOD.searchText).isEqualTo("bod -bodování")
+        expectThat(PointType.BONUS.searchText).isEqualTo("bonus")
     }
 }

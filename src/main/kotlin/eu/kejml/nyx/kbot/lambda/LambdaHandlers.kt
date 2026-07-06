@@ -7,6 +7,7 @@ import com.amazonaws.services.lambda.runtime.events.APIGatewayProxyResponseEvent
 import com.amazonaws.services.lambda.runtime.events.ScheduledEvent
 import eu.kejml.nyx.kbot.storage.postMonthlySummary
 import eu.kejml.nyx.kbot.storage.postYearlySummary
+import eu.kejml.nyx.kbot.storage.readBonusPointsFromDiscussion
 import eu.kejml.nyx.kbot.storage.readPointsFromDiscussion
 import eu.kejml.nyx.kbot.storage.updateHome
 import eu.kejml.nyx.kbot.storage.updateHomeHallOfFame
@@ -35,8 +36,9 @@ class HourlyUpdateHandler : RequestHandler<ScheduledEvent, String> {
                 .toLocalDateTime(TimeZone.UTC)
             updateHome(discussionId, contentId, today.year)
         }
+        val foundBonusPoints = readBonusPointsFromDiscussion(discussionId, startFromPostId)
         context.logger.log("Done")
-        return "$foundPoints"
+        return "$foundPoints (bonus: $foundBonusPoints)"
     }
 }
 

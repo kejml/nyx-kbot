@@ -79,8 +79,43 @@ class KbotStack(scope: Construct, id: String, props: StackProps) : Stack(scope, 
         // Always use Table.fromTableName for permissions - this works whether table exists or will be created
         val pointsTable = Table.fromTableName(this, "PointsTableReference", "points")
 
-        // Index policy for all scheduled Lambdas (covers table + indexes)
+        // Bonus points table (new, created unconditionally)
+        val bonusTable = Table.Builder.create(this, "BonusPointsTable")
+            .tableName("bonusPoints")
+            .partitionKey(Attribute.builder()
+                .name("discussionId")
+                .type(AttributeType.NUMBER)
+                .build())
+            .sortKey(Attribute.builder()
+                .name("questionIdPostId")
+                .type(AttributeType.STRING)
+                .build())
+            .billingMode(BillingMode.PAY_PER_REQUEST)
+            .removalPolicy(RemovalPolicy.RETAIN)
+            .build()
+
+        bonusTable.addLocalSecondaryIndex(LocalSecondaryIndexProps.builder()
+            .indexName("lastId")
+            .sortKey(Attribute.builder()
+                .name("postId")
+                .type(AttributeType.NUMBER)
+                .build())
+            .projectionType(ProjectionType.KEYS_ONLY)
+            .build())
+
+        // Not used yet (future reporting), but LSIs cannot be added after table creation
+        bonusTable.addLocalSecondaryIndex(LocalSecondaryIndexProps.builder()
+            .indexName("dateTimeIndex")
+            .sortKey(Attribute.builder()
+                .name("givenDateTime")
+                .type(AttributeType.STRING)
+                .build())
+            .projectionType(ProjectionType.ALL)
+            .build())
+
+        // Index policy for all scheduled Lambdas (covers tables + indexes)
         val tableArn = "arn:aws:dynamodb:${this.region}:${this.account}:table/points"
+        val bonusTableArn = "arn:aws:dynamodb:${this.region}:${this.account}:table/bonusPoints"
         val indexPolicy = PolicyStatement.Builder.create()
             .effect(Effect.ALLOW)
             .actions(listOf(
@@ -94,6 +129,8 @@ class KbotStack(scope: Construct, id: String, props: StackProps) : Stack(scope, 
             .resources(listOf(
                 tableArn,
                 "$tableArn/index/*",
+                bonusTableArn,
+                "$bonusTableArn/index/*",
             ))
             .build()
 
@@ -104,6 +141,7 @@ class KbotStack(scope: Construct, id: String, props: StackProps) : Stack(scope, 
             homeContentId = 68695L,
             hallOfFameContentId = 68810L,
             table = pointsTable,
+            bonusTable = bonusTable,
             indexPolicy = indexPolicy,
             secrets = secrets,
             enabled = true,
@@ -114,6 +152,7 @@ class KbotStack(scope: Construct, id: String, props: StackProps) : Stack(scope, 
             homeContentId = 68828L,
             hallOfFameContentId = 68829,
             table = pointsTable,
+            bonusTable = bonusTable,
             indexPolicy = indexPolicy,
             secrets = secrets,
             enabled = true,
@@ -125,6 +164,7 @@ class KbotStack(scope: Construct, id: String, props: StackProps) : Stack(scope, 
             homeContentId = 68692L,
             hallOfFameContentId = 54996L,
             table = pointsTable,
+            bonusTable = bonusTable,
             indexPolicy = indexPolicy,
             secrets = secrets,
             enabled = false,
@@ -206,9 +246,10 @@ class KbotStack(scope: Construct, id: String, props: StackProps) : Stack(scope, 
         homeContentId: Long?,
         hallOfFameContentId: Long?,
         table: ITable,
+        bonusTable: ITable,
         indexPolicy: PolicyStatement,
         secrets: java.util.Properties,
-        enabled: Boolean = true,
+        enabled: Boolean = false,
         startFromPostId: Long? = null,
     ) {
         val env = buildMap {
@@ -263,6 +304,7 @@ class KbotStack(scope: Construct, id: String, props: StackProps) : Stack(scope, 
         table.grantReadWriteData(monthly)
         table.grantReadWriteData(yearly)
         table.grantReadData(webGen)
+        bonusTable.grantReadWriteData(hourly)
         hourly.addToRolePolicy(indexPolicy)
         monthly.addToRolePolicy(indexPolicy)
         yearly.addToRolePolicy(indexPolicy)

@@ -42,8 +42,10 @@ The codebase follows a serverless architecture with individual Lambda functions:
 - **api/Discussion.kt** - Data models for Nyx.cz API responses (`Discussion`, `Post`)
 - **api/Home.kt** - Home page content models (`Home`, `Item`)
 - **storage/** - DynamoDB operations and business logic
-  - **Points.kt** - DynamoDB model and operations
+  - **Points.kt** - DynamoDB model and operations for regular points
+  - **BonusPoints.kt** - DynamoDB operations for bonus points (`bonusPoints` table)
   - **PointsHandlers.kt** - Core business logic for parsing, validation, and summary generation
+    - `PointType` enum (BOD, BONUS) drives the parsing keyword and the derived Nyx search text
 - **support/Debug.kt** - Debug utilities and test functions
 
 ### Web Dashboard
@@ -58,6 +60,7 @@ The codebase follows a serverless architecture with individual Lambda functions:
 ### Infrastructure (CDK)
 - **cdk/KbotStack.kt** - AWS CDK infrastructure definition
   - DynamoDB table `points` with local secondary indexes (`dateTimeIndex`, `lastId`)
+  - DynamoDB table `bonusPoints` (PK `discussionId`, SK `questionIdPostId` = `"questionId#postId"`, allowing multiple bonus points per question) with the same LSIs
   - Per-discussion Lambda function sets (Java 21, 512MB, 15min timeout):
     - **PoznejPcHru** (discussionId: 11354) - ENABLED
     - **ZabavnyKviz** (discussionId: 7045) - ENABLED
@@ -69,6 +72,7 @@ The codebase follows a serverless architecture with individual Lambda functions:
 
 ### Key Features
 - Parses HTML content from discussions to extract point awards using regex
+- Two point types: regular (keyword BOD, `points` table, one per question) and bonus (keyword BONUS, `bonusPoints` table, multiple per question); both are collected hourly and rated, but only regular points are reported (summaries, standings, web) for now
 - Validates points by checking if referenced posts still exist
 - Generates monthly and yearly summaries with formatted leaderboards
 - Automatically rates posts with points when they are counted in
