@@ -8,6 +8,6 @@
     "synth": "node synth.js"
   },
   "devDependencies": {
-    "aws-cdk": "^2.114.1"
+    "aws-cdk": "^2.1129.0"
   }
 }
