@@ -158,11 +158,11 @@ fun postYearlySummary(
         discussionId,
         yearStart,
         yearEnd,
-        heading = "<br>$BONUS_HEADING za rok <b>$year</b>:<br><br>"
+        heading = "<br><h4>$BONUS_HEADING za rok $year</h4><br>",
     )
     postSummary(
         """
-        Vyhodnocení bodování za rok <b>$year</b>:<br>
+        <h3>Vyhodnocení bodování za rok $year</h3>
         <br>
         """.trimIndent()
             .plus(pointsTable)
@@ -195,24 +195,24 @@ fun postMonthlySummary(
         discussionId = discussionId,
         from = monthStart,
         to = monthEnd,
-        heading = "<br>$BONUS_HEADING za měsíc <b>$monthString $year</b>:<br><br>",
+        heading = "<br><h4>$BONUS_HEADING za měsíc $monthString $year</h4><br>",
     )
 
     val bonusPointsTableYear = renderBonusPointsPost(
         discussionId,
         yearStart,
         monthEnd,
-        heading = "<br>$BONUS_HEADING – průběžné pořadí za rok $year:<br><br>",
+        heading = "<br><h4>$BONUS_HEADING – průběžné pořadí za rok $year</h4><br>",
         limitDisplayedPlaces = 10,
     )
     postSummary(
         """
-        Vyhodnocení bodování za měsíc <b>$monthString $year</b>:<br>
+        <h3>Vyhodnocení bodování za měsíc $monthString $year</h3>
         <br>
         """.trimIndent()
             .plus(pointsTableMonth)
             .plus(bonusPointsTableMonth)
-            .plus("<br>Top 10 průběžné pořadí za rok $year:<br><br>")
+            .plus("<br><h3>Top 10 průběžné pořadí za rok $year</h3><br>")
             .plus(pointsTableYear)
             .plus(bonusPointsTableYear),
         discussionId,
@@ -236,7 +236,7 @@ fun updateHome(
         discussionId,
         yearStart,
         yearEnd,
-        heading = "<br><h3>$BONUS_HEADING v roce $year</h3><br>"
+        heading = "<br><h3>$BONUS_HEADING v roce $year</h3><br>",
     )
     postHeader(
         body =
