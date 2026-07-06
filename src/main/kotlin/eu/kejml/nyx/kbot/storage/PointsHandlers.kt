@@ -19,6 +19,8 @@ import kotlin.time.Duration.Companion.seconds
 private val log = LoggerFactory.getLogger("PointsHandlers")
 private val json = Json { ignoreUnknownKeys = true }
 
+private const val BONUS_HEADING = "Bonusové body"
+
 internal data class QuestionIdGivenTo(
     val questionId: Long,
     val givenTo: String,
@@ -121,7 +123,10 @@ private fun readPointsInternal(
     points
 }
 
-fun List<Point>.validatePointsAndRemoveInvalid(validatePoints: Boolean): List<Point> = if (validatePoints) {
+fun List<Point>.validatePointsAndRemoveInvalid(
+    validatePoints: Boolean,
+    storage: PointsStorage = Points,
+): List<Point> = if (validatePoints) {
     runBlocking {
         filter { point ->
             val data = NyxClient
@@ -133,7 +138,7 @@ fun List<Point>.validatePointsAndRemoveInvalid(validatePoints: Boolean): List<Po
             val result = posts.first().id == point.postId
             if (!result) {
                 log.info("Removing point $point - not found in the discussion anymore. (Found only posts with ids: ${posts.map { it.id }}")
-                Points.removePoint(point)
+                storage.removePoint(point)
             }
             result
         }
@@ -146,18 +151,22 @@ fun postYearlySummary(
     discussionId: Long,
     year: Int,
 ) {
-    val pointsTable = renderPointsPost(
+    val yearStart = LocalDateTime(year, 1, 1, 0, 0)
+    val yearEnd = LocalDateTime(year, 12, 31, 23, 59, 59, 999)
+    val pointsTable = renderPointsPost(discussionId, yearStart, yearEnd)
+    val bonusPointsTable = renderBonusPointsPost(
         discussionId,
-        LocalDateTime(year, 1, 1, 0, 0),
-        LocalDateTime(year, 12, 31, 23, 59, 59, 999),
+        yearStart,
+        yearEnd,
+        heading = "<br>$BONUS_HEADING za rok <b>$year</b>:<br><br>"
     )
     postSummary(
         """
         Vyhodnocení bodování za rok <b>$year</b>:<br>
         <br>
-        """.trimIndent().plus(
-            pointsTable,
-        ),
+        """.trimIndent()
+            .plus(pointsTable)
+            .plus(bonusPointsTable),
         discussionId,
     )
 }
@@ -171,33 +180,41 @@ fun postMonthlySummary(
 
     val monthString = month.getDisplayName(TextStyle.FULL_STANDALONE, Locale.forLanguageTag("cs"))
 
-    val pointsTableMonth = renderPointsPost(
-        discussionId,
-        LocalDateTime(year, month, 1, 0, 0),
-        LocalDateTime(year, month + 1, 1, 0, 0)
-            .toInstant(TimeZone.UTC)
-            .minus(1.seconds)
-            .toLocalDateTime(TimeZone.UTC),
+    val monthStart = LocalDateTime(year, month, 1, 0, 0)
+    val monthEnd = LocalDateTime(year, month + 1, 1, 0, 0)
+        .toInstant(TimeZone.UTC)
+        .minus(1.seconds)
+        .toLocalDateTime(TimeZone.UTC)
+    val yearStart = LocalDateTime(year, 1, 1, 0, 0)
+
+    val pointsTableMonth = renderPointsPost(discussionId, monthStart, monthEnd)
+
+    val pointsTableYear = renderPointsPost(discussionId, yearStart, monthEnd, 10)
+
+    val bonusPointsTableMonth = renderBonusPointsPost(
+        discussionId = discussionId,
+        from = monthStart,
+        to = monthEnd,
+        heading = "<br>$BONUS_HEADING za měsíc <b>$monthString $year</b>:<br><br>",
     )
 
-    val pointsTableYear = renderPointsPost(
+    val bonusPointsTableYear = renderBonusPointsPost(
         discussionId,
-        LocalDateTime(year, 1, 1, 0, 0),
-        LocalDateTime(year, month + 1, 1, 0, 0)
-            .toInstant(TimeZone.UTC)
-            .minus(1.seconds)
-            .toLocalDateTime(TimeZone.UTC),
-        10,
+        yearStart,
+        monthEnd,
+        heading = "<br>$BONUS_HEADING – průběžné pořadí za rok $year:<br><br>",
+        limitDisplayedPlaces = 10,
     )
-
     postSummary(
         """
         Vyhodnocení bodování za měsíc <b>$monthString $year</b>:<br>
         <br>
         """.trimIndent()
             .plus(pointsTableMonth)
+            .plus(bonusPointsTableMonth)
             .plus("<br>Top 10 průběžné pořadí za rok $year:<br><br>")
-            .plus(pointsTableYear),
+            .plus(pointsTableYear)
+            .plus(bonusPointsTableYear),
         discussionId,
     )
 }
@@ -207,11 +224,19 @@ fun updateHome(
     contentId: Long,
     year: Int,
 ) {
+    val yearStart = LocalDateTime(year, 1, 1, 0, 0)
+    val yearEnd = LocalDateTime(year, 12, 31, 23, 59, 59, 999)
     val pointsTable = renderPointsTable(
         discussionId = discussionId,
-        from = LocalDateTime(year, 1, 1, 0, 0),
-        to = LocalDateTime(year, 12, 31, 23, 59, 59, 999),
+        from = yearStart,
+        to = yearEnd,
         validatePoints = false,
+    )
+    val bonusPointsTable = renderBonusPointsTable(
+        discussionId,
+        yearStart,
+        yearEnd,
+        heading = "<br><h3>$BONUS_HEADING v roce $year</h3><br>"
     )
     postHeader(
         body =
@@ -219,7 +244,8 @@ fun updateHome(
             <h3>Průběžné bodování v roce $year</h3>
             <br>
             """.trimIndent()
-                .plus(pointsTable),
+                .plus(pointsTable)
+                .plus(bonusPointsTable),
         discussionId = discussionId,
         contentId = contentId,
     )
@@ -235,23 +261,41 @@ fun updateHomeHallOfFame(
         return
     }
     log.info("Getting data for year $lastYear")
+    val lastYearStart = LocalDateTime(lastYear, 1, 1, 0, 0)
+    val lastYearEnd = LocalDateTime(lastYear, 12, 31, 23, 59, 59, 999)
     val pointsTable = renderPointsTable(
         discussionId = discussionId,
-        from = LocalDateTime(lastYear, 1, 1, 0, 0),
-        to = LocalDateTime(lastYear, 12, 31, 23, 59, 59, 999),
+        from = lastYearStart,
+        to = lastYearEnd,
         validatePoints = false,
+    )
+    val bonusPointsTable = renderBonusPointsTable(
+        discussionId,
+        lastYearStart,
+        lastYearEnd,
+        heading = "<br><h3>$BONUS_HEADING</h3><br>",
     )
 
     val hallOfFame = (2022 until lastYear)
         .reversed()
         .map { y ->
             log.info("Getting data for year $y")
+            val yearStart = LocalDateTime(y, 1, 1, 0, 0)
+            val yearEnd = LocalDateTime(y, 12, 31, 23, 59, 59, 999)
             y to renderPointsTable(
                 discussionId = discussionId,
-                from = LocalDateTime(y, 1, 1, 0, 0),
-                to = LocalDateTime(y, 12, 31, 23, 59, 59, 999),
+                from = yearStart,
+                to = yearEnd,
                 limitDisplayedPlaces = 5,
                 validatePoints = false,
+            ).plus(
+                renderBonusPointsTable(
+                    discussionId,
+                    yearStart,
+                    yearEnd,
+                    heading = "<br><h4>$BONUS_HEADING</h4><br>",
+                    limitDisplayedPlaces = 5,
+                ),
             )
         }.joinToString("\n") {
             """
@@ -270,6 +314,7 @@ fun updateHomeHallOfFame(
         <br>
         """.trimIndent()
             .plus(pointsTable)
+            .plus(bonusPointsTable)
             .plus("<br>")
             .plus("<h2>Síň slávy</h2>")
             .plus("<br>")
@@ -304,14 +349,15 @@ fun postSummary(
 }
 
 private fun getGroupedPoints(
+    storage: PointsStorage,
     discussionId: Long,
     from: LocalDateTime,
     to: LocalDateTime,
     validatePoints: Boolean = true,
 ): Map<Int, List<UserAndPoints>> =
-    Points
+    storage
         .getPointsBetween(discussionId, from, to)
-        .validatePointsAndRemoveInvalid(validatePoints)
+        .validatePointsAndRemoveInvalid(validatePoints, storage)
         .filter { it.givenTo != null }
         .groupBy { it.givenTo!! }
         .map { it.key to it.value }
@@ -324,16 +370,24 @@ private fun renderPointsPost(
     to: LocalDateTime,
     limitDisplayedPlaces: Int = Int.MAX_VALUE,
     validatePoints: Boolean = true,
+): String = renderGroupedPost(getGroupedPoints(Points, discussionId, from, to, validatePoints), limitDisplayedPlaces)
+
+/**
+ * [groupedPoints] must be sorted descending by the number of points (as returned by getGroupedPoints).
+ */
+internal fun renderGroupedPost(
+    groupedPoints: Map<Int, List<UserAndPoints>>,
+    limitDisplayedPlaces: Int = Int.MAX_VALUE,
+    withMedals: Boolean = true,
 ): String {
     var globalOrder = 1
-    val pointsToUser = getGroupedPoints(discussionId, from, to, validatePoints)
 
-    return pointsToUser.entries.joinToString("\n") { numToUserPointsMap ->
+    return groupedPoints.entries.joinToString("\n") { numToUserPointsMap ->
         if (globalOrder > limitDisplayedPlaces) return@joinToString ""
         val numberOfUsers = numToUserPointsMap.value.size
         val resultLine = numToUserPointsMap.value.sortedBy { it.userName }.joinToString("\n") { userAndPoints ->
             """
-            ${determineOrder(numberOfUsers, globalOrder).padEndHtml(27)}
+            ${determineOrder(numberOfUsers, globalOrder, withMedals).padEndHtml(27)}
             ${userAndPoints.userName.padEndHtml(28)}
             ${numToUserPointsMap.key}
             <br>
@@ -350,21 +404,29 @@ private fun renderPointsTable(
     to: LocalDateTime,
     limitDisplayedPlaces: Int = Int.MAX_VALUE,
     validatePoints: Boolean = true,
+): String = renderGroupedTable(getGroupedPoints(Points, discussionId, from, to, validatePoints), limitDisplayedPlaces)
+
+/**
+ * [groupedPoints] must be sorted descending by the number of points (as returned by getGroupedPoints).
+ */
+internal fun renderGroupedTable(
+    groupedPoints: Map<Int, List<UserAndPoints>>,
+    limitDisplayedPlaces: Int = Int.MAX_VALUE,
+    withMedals: Boolean = true,
 ): String {
     var globalOrder = 1
     var rowIndex = 0
-    val pointsToUser = getGroupedPoints(discussionId, from, to, validatePoints)
 
     val cellStyle = "border: 1px solid #ddd; padding: 8px; text-align: left;"
     val tableStyle = "border-collapse: collapse; width: 300px;"
     val headerStyle = "$cellStyle background-color: rgba(0, 0, 0, 0.05);"
     val narrowHeaderStyle = "$cellStyle width: 1px; white-space: nowrap; background-color: rgba(0, 0, 0, 0.05);"
 
-    val tableRows = pointsToUser.entries.joinToString("") { numToUserPointsMap ->
+    val tableRows = groupedPoints.entries.joinToString("") { numToUserPointsMap ->
         if (globalOrder > limitDisplayedPlaces) return@joinToString ""
         val numberOfUsers = numToUserPointsMap.value.size
         val rows = numToUserPointsMap.value.sortedBy { it.userName }.joinToString("") { userAndPoints ->
-            val orderDisplay = determineOrder(numberOfUsers, globalOrder)
+            val orderDisplay = determineOrder(numberOfUsers, globalOrder, withMedals)
             val rowStyle = if (rowIndex % 2 == 0) "" else "background-color: rgba(0, 0, 0, 0.08);"
             rowIndex++
             """
@@ -395,6 +457,32 @@ private fun renderPointsTable(
         """.trimIndent()
 }
 
+private fun renderBonusPointsPost(
+    discussionId: Long,
+    from: LocalDateTime,
+    to: LocalDateTime,
+    heading: String,
+    limitDisplayedPlaces: Int = Int.MAX_VALUE,
+    validatePoints: Boolean = true,
+): String =
+    getGroupedPoints(BonusPoints, discussionId, from, to, validatePoints)
+        .takeIf { it.isNotEmpty() }
+        ?.let { heading + renderGroupedPost(it, limitDisplayedPlaces, withMedals = false) }
+        .orEmpty()
+
+private fun renderBonusPointsTable(
+    discussionId: Long,
+    from: LocalDateTime,
+    to: LocalDateTime,
+    heading: String,
+    limitDisplayedPlaces: Int = Int.MAX_VALUE,
+    validatePoints: Boolean = false,
+): String =
+    getGroupedPoints(BonusPoints, discussionId, from, to, validatePoints)
+        .takeIf { it.isNotEmpty() }
+        ?.let { heading + renderGroupedTable(it, limitDisplayedPlaces, withMedals = false) }
+        .orEmpty()
+
 data class UserAndPoints(
     val userName: String,
     val points: List<Point>,
@@ -414,10 +502,12 @@ private fun String.padEndHtml(length: Int): String {
 private fun determineOrder(
     numberOfUsers: Int,
     globalOrder: Int,
+    withMedals: Boolean,
 ) = if (numberOfUsers == 1) {
-    "${addMedal(globalOrder)}$globalOrder."
+    "${addMedal(globalOrder).takeIf { withMedals }.orEmpty()}$globalOrder."
 } else {
-    "${medalsAndRanks(globalOrder, globalOrder + numberOfUsers - 1)}."
+    val to = globalOrder + numberOfUsers - 1
+    "${addMedals(globalOrder, to).takeIf { withMedals }.orEmpty()}$globalOrder.-$to."
 }
 
 private fun addMedal(order: Int): String =
@@ -427,11 +517,6 @@ private fun addMedal(order: Int): String =
         3 -> "🥉"
         else -> " "
     }
-
-private fun medalsAndRanks(
-    from: Int,
-    to: Int,
-): String = addMedals(from, to) + "$from.-$to"
 
 private fun addMedals(
     from: Int,

@@ -72,7 +72,7 @@ The codebase follows a serverless architecture with individual Lambda functions:
 
 ### Key Features
 - Parses HTML content from discussions to extract point awards using regex
-- Two point types: regular (keyword BOD, `points` table, one per question) and bonus (keyword BONUS, `bonusPoints` table, multiple per question); both are collected hourly and rated, but only regular points are reported (summaries, standings, web) for now
+- Two point types: regular (keyword BOD, `points` table, one per question) and bonus (keyword BONUS, `bonusPoints` table, multiple per question); both are collected hourly and rated; bonus points are reported in summaries, home standings, and hall of fame as a second table without medal emojis (skipped when empty); the web dashboard shows regular points only
 - Validates points by checking if referenced posts still exist
 - Generates monthly and yearly summaries with formatted leaderboards
 - Automatically rates posts with points when they are counted in

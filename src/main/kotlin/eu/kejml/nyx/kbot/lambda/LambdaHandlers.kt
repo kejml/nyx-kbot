@@ -28,15 +28,15 @@ class HourlyUpdateHandler : RequestHandler<ScheduledEvent, String> {
     ): String {
         context.logger.log("Starting hourly points update")
         val foundPoints = readPointsFromDiscussion(discussionId, startFromPostId)
-        if (foundPoints > 0 && contentId != null) {
-            context.logger.log("Found $foundPoints points, updating home")
+        val foundBonusPoints = readBonusPointsFromDiscussion(discussionId, startFromPostId)
+        if ((foundPoints + foundBonusPoints > 0) && contentId != null) {
+            context.logger.log("Found $foundPoints points and $foundBonusPoints bonus points, updating home")
             val today = Clock.System
                 .now()
                 .minus(1.days)
                 .toLocalDateTime(TimeZone.UTC)
             updateHome(discussionId, contentId, today.year)
         }
-        val foundBonusPoints = readBonusPointsFromDiscussion(discussionId, startFromPostId)
         context.logger.log("Done")
         return "$foundPoints (bonus: $foundBonusPoints)"
     }

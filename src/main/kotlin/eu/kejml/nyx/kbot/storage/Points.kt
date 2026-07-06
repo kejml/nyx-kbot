@@ -44,7 +44,7 @@ fun fromAttributeValues(input: Map<String, AttributeValue>): Point {
     )
 }
 
-object Points {
+object Points : PointsStorage {
     private val client = DynamoDbClient.builder().build()
     private val log = LoggerFactory.getLogger(this.javaClass)
 
@@ -109,7 +109,7 @@ object Points {
         }
     }
 
-    internal fun removePoint(point: Point) {
+    override fun removePoint(point: Point) {
         val keyToRemove = mapOf<String, AttributeValue>(
             "discussionId" to AttributeValue.builder().n(point.discussionId.toString()).build(),
             "questionId" to AttributeValue.builder().n(point.questionId.toString()).build(),
@@ -172,30 +172,9 @@ object Points {
             ?.toList() ?: emptyList()
     }
 
-    internal fun getPointsBetween(
+    override fun getPointsBetween(
         discussionId: Long,
         from: LocalDateTime,
         to: LocalDateTime,
-    ): List<Point> {
-        log.info("Getting points between $from and $to")
-
-        val request = QueryRequest
-            .builder()
-            .tableName(TABLE_NAME)
-            .indexName("dateTimeIndex")
-            .keyConditionExpression("discussionId = :discussionId AND givenDateTime BETWEEN :dateFrom AND :dateTo")
-            .expressionAttributeValues(
-                mapOf(
-                    ":discussionId" to AttributeValue.builder().n(discussionId.toString()).build(),
-                    ":dateFrom" to AttributeValue.builder().s(from.toString()).build(),
-                    ":dateTo" to AttributeValue.builder().s(to.toString()).build(),
-                ),
-            ).build()
-
-        return client
-            .queryPaginator(request)
-            .items()
-            ?.let { item -> item.map { fromAttributeValues(it) } }
-            ?.toList() ?: emptyList()
-    }
+    ): List<Point> = client.queryPointsBetween(TABLE_NAME, discussionId, from, to)
 }

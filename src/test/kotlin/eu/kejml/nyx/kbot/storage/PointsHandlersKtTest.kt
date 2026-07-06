@@ -5,6 +5,7 @@ import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.ValueSource
 import strikt.api.expectThat
 import strikt.assertions.any
+import strikt.assertions.contains
 import strikt.assertions.first
 import strikt.assertions.hasSize
 import strikt.assertions.isEmpty
@@ -203,4 +204,88 @@ internal class PointsHandlersKtTest {
         expectThat(PointType.BOD.searchText).isEqualTo("bod -bodování")
         expectThat(PointType.BONUS.searchText).isEqualTo("bonus")
     }
+
+    @Test
+    fun `rendering grouped post with medals awards top three`() {
+        val grouped = sortedMapOf(
+            reverseOrder(),
+            9 to listOf(user("ALICE")),
+            8 to listOf(user("BOB")),
+            7 to listOf(user("CYRIL")),
+            5 to listOf(user("DAVID")),
+        )
+
+        val output = renderGroupedPost(grouped)
+
+        expectThat(output).contains("🥇")
+        expectThat(output).contains("🥈")
+        expectThat(output).contains("🥉")
+        expectThat(output).contains("&nbsp;4.")
+    }
+
+    @Test
+    fun `rendering grouped post without medals has plain ranks`() {
+        val grouped = sortedMapOf(
+            reverseOrder(),
+            9 to listOf(user("ALICE")),
+            8 to listOf(user("BOB")),
+        )
+
+        val output = renderGroupedPost(grouped, withMedals = false)
+
+        expectThat(output).contains("1.")
+        expectThat(output).contains("2.")
+        expectThat(output).not().contains("🥇")
+        expectThat(output).not().contains("🥈")
+        expectThat(output).not().contains("🥉")
+    }
+
+    @Test
+    fun `rendering grouped table without medals has plain ranks`() {
+        val grouped = sortedMapOf(
+            reverseOrder(),
+            9 to listOf(user("ALICE"), user("BOB")),
+            7 to listOf(user("CYRIL")),
+        )
+
+        val output = renderGroupedTable(grouped, withMedals = false)
+
+        expectThat(output).contains("1.-2.")
+        expectThat(output).contains("3.")
+        expectThat(output).not().contains("🥇")
+        expectThat(output).not().contains("🥈")
+        expectThat(output).not().contains("🥉")
+    }
+
+    @Test
+    fun `rendering grouped table with medals keeps medals for tie spanning top three`() {
+        val grouped = sortedMapOf(
+            reverseOrder(),
+            9 to listOf(user("ALICE"), user("BOB")),
+            7 to listOf(user("CYRIL")),
+        )
+
+        val output = renderGroupedTable(grouped)
+
+        expectThat(output).contains("🥇")
+        expectThat(output).contains("🥈")
+        expectThat(output).contains("🥉")
+        expectThat(output).contains("1.-2.")
+    }
+
+    @Test
+    fun `limiting displayed places truncates lower ranks`() {
+        val grouped = sortedMapOf(
+            reverseOrder(),
+            9 to listOf(user("ALICE")),
+            8 to listOf(user("BOB")),
+        )
+
+        val output = renderGroupedPost(grouped, limitDisplayedPlaces = 1)
+
+        expectThat(output).contains("ALICE")
+        expectThat(output).not().contains("BOB")
+    }
+
+    private fun user(name: String) = UserAndPoints(name, emptyList())
 }
