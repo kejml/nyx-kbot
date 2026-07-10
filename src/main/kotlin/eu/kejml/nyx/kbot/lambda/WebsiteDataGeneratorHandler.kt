@@ -2,7 +2,6 @@ package eu.kejml.nyx.kbot.lambda
 
 import com.amazonaws.services.lambda.runtime.Context
 import com.amazonaws.services.lambda.runtime.RequestHandler
-import com.amazonaws.services.lambda.runtime.events.ScheduledEvent
 import eu.kejml.nyx.kbot.storage.DiscussionData
 import eu.kejml.nyx.kbot.storage.Points
 import kotlinx.datetime.Clock
@@ -17,7 +16,7 @@ import software.amazon.awssdk.services.s3.S3Client
 import software.amazon.awssdk.services.s3.model.PutObjectRequest
 import java.net.URI
 
-class WebsiteDataGeneratorHandler : RequestHandler<ScheduledEvent, String> {
+class WebsiteDataGeneratorHandler : RequestHandler<Any?, String> {
     private val discussionId = System.getenv("DISCUSSION_ID").toLong()
     private val bucketName = System.getenv("R2_BUCKET_NAME")
     private val s3Client = S3Client.builder()
@@ -34,7 +33,7 @@ class WebsiteDataGeneratorHandler : RequestHandler<ScheduledEvent, String> {
         .build()
 
     override fun handleRequest(
-        input: ScheduledEvent,
+        input: Any?,
         context: Context,
     ): String {
         context.logger.log("Generating website data for discussion $discussionId")

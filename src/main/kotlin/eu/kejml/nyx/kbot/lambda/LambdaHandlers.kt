@@ -4,7 +4,6 @@ import com.amazonaws.services.lambda.runtime.Context
 import com.amazonaws.services.lambda.runtime.RequestHandler
 import com.amazonaws.services.lambda.runtime.events.APIGatewayProxyRequestEvent
 import com.amazonaws.services.lambda.runtime.events.APIGatewayProxyResponseEvent
-import com.amazonaws.services.lambda.runtime.events.ScheduledEvent
 import eu.kejml.nyx.kbot.storage.postMonthlySummary
 import eu.kejml.nyx.kbot.storage.postYearlySummary
 import eu.kejml.nyx.kbot.storage.readBonusPointsFromDiscussion
@@ -17,13 +16,13 @@ import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
 import kotlin.time.Duration.Companion.days
 
-class HourlyUpdateHandler : RequestHandler<ScheduledEvent, String> {
+class HourlyUpdateHandler : RequestHandler<Any?, String> {
     private val discussionId = System.getenv("DISCUSSION_ID").toLong()
     private val contentId = System.getenv("HOME_CONTENT_ID")?.toLongOrNull()
     private val startFromPostId = System.getenv("START_FROM_POST_ID")?.toLongOrNull() ?: 1L
 
     override fun handleRequest(
-        input: ScheduledEvent,
+        input: Any?,
         context: Context,
     ): String {
         context.logger.log("Starting hourly points update")
@@ -42,11 +41,11 @@ class HourlyUpdateHandler : RequestHandler<ScheduledEvent, String> {
     }
 }
 
-class MonthlySummaryHandler : RequestHandler<ScheduledEvent, String> {
+class MonthlySummaryHandler : RequestHandler<Any?, String> {
     private val discussionId = System.getenv("DISCUSSION_ID").toLong()
 
     override fun handleRequest(
-        input: ScheduledEvent,
+        input: Any?,
         context: Context,
     ): String {
         context.logger.log("Starting monthly summary")
@@ -59,12 +58,12 @@ class MonthlySummaryHandler : RequestHandler<ScheduledEvent, String> {
     }
 }
 
-class YearlySummaryHandler : RequestHandler<ScheduledEvent, String> {
+class YearlySummaryHandler : RequestHandler<Any?, String> {
     private val discussionId = System.getenv("DISCUSSION_ID").toLong()
     private val hallOfFameContentId = System.getenv("HALL_OF_FAME_CONTENT_ID")?.toLongOrNull()
 
     override fun handleRequest(
-        input: ScheduledEvent,
+        input: Any?,
         context: Context,
     ): String {
         context.logger.log("Starting yearly summary")
