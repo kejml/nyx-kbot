@@ -314,7 +314,7 @@ class KbotStack(scope: Construct, id: String, props: StackProps) : Stack(scope, 
             Schedule.Builder.create(this, "HourlyUpdateSchedule$label")
                 .description("Hourly update schedule ($label) - Last deployed: $deploymentTime")
                 .schedule(ScheduleExpression.rate(Duration.hours(1)))
-                .target(LambdaInvoke.Builder.create(hourly).build())
+                .target(LambdaInvoke.Builder.create(hourly).retryAttempts(0).build())
                 .build()
 
             Schedule.Builder.create(this, "MonthlySummarySchedule$label")
@@ -342,7 +342,7 @@ class KbotStack(scope: Construct, id: String, props: StackProps) : Stack(scope, 
             Schedule.Builder.create(this, "WebsiteDataGeneratorSchedule$label")
                 .description("Website data generator schedule ($label) - Last deployed: $deploymentTime")
                 .schedule(ScheduleExpression.rate(Duration.hours(1)))
-                .target(LambdaInvoke.Builder.create(webGen).build())
+                .target(LambdaInvoke.Builder.create(webGen).retryAttempts(0).build())
                 .build()
         }
     }
