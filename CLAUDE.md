@@ -35,30 +35,29 @@ The codebase follows a serverless architecture with individual Lambda functions:
 - **lambda/WebsiteDataGeneratorHandler.kt** - Generates JSON data for the web dashboard
   - Runs hourly per discussion
   - Pulls all points from DynamoDB and uploads `data/{discussionId}.json` to Cloudflare R2
-- **lambda/ScheduledActions.kt** - Legacy object (deprecated, use handlers instead)
 - **api/NyxClient.kt** - HTTP client for Nyx.cz API communication
   - Handles authentication via Bearer token
-  - Supports discussion reading, posting, and rating
+  - Supports discussion reading, posting, rating, and sending mail
 - **api/Discussion.kt** - Data models for Nyx.cz API responses (`Discussion`, `Post`)
 - **api/Home.kt** - Home page content models (`Home`, `Item`)
 - **storage/** - DynamoDB operations and business logic
-  - **Points.kt** - DynamoDB model and operations for regular points
+  - **PointsStorage.kt** - Common storage interface for both point tables plus shared DynamoDB query helpers
+  - **Points.kt** - DynamoDB model (`Point`) and operations for regular points (`points` table)
   - **BonusPoints.kt** - DynamoDB operations for bonus points (`bonusPoints` table)
   - **PointsHandlers.kt** - Core business logic for parsing, validation, and summary generation
     - `PointType` enum (BOD, BONUS) drives the parsing keyword and the derived Nyx search text
 - **support/Debug.kt** - Debug utilities and test functions
 
 ### Web Dashboard
-- **web/index.html** - Interactive dashboard built with Highcharts Stock
-  - Time-series chart, day-of-week/hourly distributions, top 20 receivers/givers
+- **web/index.html** + **web/app.js** + **web/app.css** - Interactive dashboard built with Highcharts Stock
+  - Time-series chart with selectable aggregation, day-of-week/hourly distributions, top 20 receivers/givers
   - Multi-filter support: by user (receiver/giver), by hours, by points value
   - Supports multiple discussions via URL slug or `?discussion=` query param
-  - Fetches data from `data/{discussionId}.json` on R2
-- **web/data/** - Directory for generated JSON data files (populated at runtime)
+  - Fetches data from `data/{discussionId}.json` on R2 (contains both regular and bonus points)
 - Hosted at https://kbot.kejml.eu via Cloudflare R2
 
 ### Infrastructure (CDK)
-- **cdk/KbotStack.kt** - AWS CDK infrastructure definition
+- **cdk/src/main/kotlin/eu/kejml/nyx/kbot/cdk/KbotStack.kt** - AWS CDK infrastructure definition
   - DynamoDB table `points` with local secondary indexes (`dateTimeIndex`, `lastId`)
   - DynamoDB table `bonusPoints` (PK `discussionId`, SK `questionIdPostId` = `"questionId#postId"`, allowing multiple bonus points per question) with the same LSIs
   - Per-discussion Lambda function sets (Java 21, 512MB, 15min timeout):
@@ -66,13 +65,14 @@ The codebase follows a serverless architecture with individual Lambda functions:
     - **ZabavnyKviz** (discussionId: 7045) - ENABLED
     - **Sandbox** (discussionId: 20310) - DISABLED
   - Each enabled discussion gets: `HourlyUpdate`, `MonthlySummary`, `YearlySummary`, `WebsiteDataGenerator` functions
-  - EventBridge rules for scheduled execution
+  - EventBridge Scheduler schedules for scheduled execution (hourly tasks run with no retries)
   - API Gateway for REST endpoints (`/hello`, `/nyx-test`)
   - Conditional DynamoDB table creation via `CreateTable` CDK parameter
 
 ### Key Features
 - Parses HTML content from discussions to extract point awards using regex
-- Two point types: regular (keyword BOD, `points` table, one per question) and bonus (keyword BONUS, `bonusPoints` table, multiple per question); both are collected hourly and rated; bonus points are reported in summaries, home standings, and hall of fame as a second table without medal emojis (skipped when empty); the web dashboard shows regular points only
+- Two point types: regular (keyword BOD, `points` table, one per question) and bonus (keyword BONUS, `bonusPoints` table, multiple per question); both are collected hourly and rated; bonus points are reported in summaries, home standings, hall of fame (as a second table without medal emojis, skipped when empty), and on the web dashboard
+- Duplicate regular points (question already awarded) are rejected: the post gets a visible negative rating and the giver is notified via Nyx mail
 - Validates points by checking if referenced posts still exist
 - Generates monthly and yearly summaries with formatted leaderboards
 - Automatically rates posts with points when they are counted in
