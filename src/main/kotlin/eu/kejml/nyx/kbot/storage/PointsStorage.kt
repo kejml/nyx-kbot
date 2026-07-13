@@ -18,6 +18,32 @@ interface PointsStorage {
 
 private val queryLog = LoggerFactory.getLogger(PointsStorage::class.java)
 
+internal fun DynamoDbClient.queryPointsFrom(
+    tableName: String,
+    discussionId: Long,
+    from: LocalDateTime,
+): List<Point> {
+    queryLog.info("Getting all points from $tableName for discussion $discussionId from $from")
+
+    val request = QueryRequest
+        .builder()
+        .tableName(tableName)
+        .keyConditionExpression("discussionId = :discussionId")
+        .filterExpression("givenDateTime >= :from")
+        .expressionAttributeValues(
+            mapOf(
+                ":discussionId" to AttributeValue.builder().n(discussionId.toString()).build(),
+                ":from" to AttributeValue.builder().s(from.toString()).build(),
+            ),
+        ).build()
+
+    return this
+        .queryPaginator(request)
+        .items()
+        ?.let { item -> item.map { fromAttributeValues(it) } }
+        ?.toList() ?: emptyList()
+}
+
 internal fun DynamoDbClient.queryPointsBetween(
     tableName: String,
     discussionId: Long,

@@ -3,6 +3,7 @@ package eu.kejml.nyx.kbot.storage
 import eu.kejml.nyx.kbot.api.DiscussionOrder
 import eu.kejml.nyx.kbot.api.DiscussionQueryParams
 import eu.kejml.nyx.kbot.api.NyxClient
+import eu.kejml.nyx.kbot.api.Post
 import eu.kejml.nyx.kbot.api.RatingAction
 import kotlinx.coroutines.runBlocking
 import kotlinx.datetime.LocalDateTime
@@ -91,11 +92,29 @@ private fun readPointsInternal(
     persist: (Point) -> Unit,
 ): Int = runBlocking {
     log.info("Saving posts")
-    val discussion = NyxClient.getDiscussion(discussionId, DiscussionQueryParams(type.searchText, fromId))
-    log.info(discussion.toString())
     val saved = mutableListOf<Long>()
-    val points = discussion.posts
-        .filter { it.id > fromId }
+    var currentFromId = fromId
+    while (true) {
+        val discussion = NyxClient.getDiscussion(discussionId, DiscussionQueryParams(type.searchText, currentFromId))
+        log.info(discussion.toString())
+        val posts = discussion.posts.filter { it.id > currentFromId }
+        if (posts.isEmpty()) break
+        processPosts(posts, discussionId, type, saved, persist)
+        currentFromId = posts.maxOf { it.id }
+    }
+    val logMessage = "Done, latest index was $currentFromId, saved ${saved.size} new ${type.name} points (${saved.joinToString(", ")})"
+    log.info(logMessage)
+    saved.size
+}
+
+private suspend fun processPosts(
+    posts: List<Post>,
+    discussionId: Long,
+    type: PointType,
+    saved: MutableList<Long>,
+    persist: (Point) -> Unit,
+) {
+    posts
         .map { post ->
             try {
                 post.content
@@ -109,7 +128,7 @@ private fun readPointsInternal(
             }
         }
         .flatten()
-        .map { point ->
+        .forEach { point ->
             if (type == PointType.BOD && Points.pointExists(point.discussionId, point.questionId!!)) {
                 val myRating = NyxClient.getMyRating(discussionId, point.postId)
                 if (myRating != RatingAction.NEGATIVE && myRating != RatingAction.NEGATIVE_VISIBLE) {
@@ -137,18 +156,12 @@ private fun readPointsInternal(
                 } else {
                     log.info("Post ${point.postId} already rated negatively, skipping")
                 }
-                false
             } else {
                 saved.add(point.postId)
                 persist(point)
                 NyxClient.ratePost(discussionId, point.postId)
-                true
             }
         }
-        .count { it }
-    val logMessage = "Done, latest index was $fromId, saved ${saved.size} new ${type.name} points (${saved.joinToString(", ")})"
-    log.info(logMessage)
-    points
 }
 
 fun List<Point>.validatePointsAndRemoveInvalid(

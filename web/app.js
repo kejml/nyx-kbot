@@ -1,5 +1,8 @@
 const DAY_NAMES = ['Pondělí', 'Úterý', 'Středa', 'Čtvrtek', 'Pátek', 'Sobota', 'Neděle'];
 
+const BONUS_COLOR = '#f15c80';
+const BONUS_COLOR_DIM = 'rgba(241,92,128,0.3)';
+
 const DISCUSSION_NAMES = {
     '11354': 'Poznej PC hru',
     '7045': 'Zábavný kvíz',
@@ -63,63 +66,87 @@ function buildTimeseriesData(points, allPoints) {
     return data;
 }
 
-function updateDowChart(dowChart, points) {
+function countByDow(points) {
     const byDow = [0, 0, 0, 0, 0, 0, 0];
     points.forEach(p => {
         const d = new Date(p.givenDateTime.substring(0, 10));
         byDow[(d.getDay() + 6) % 7]++;
     });
-    dowChart.series[0].setData(byDow.map((v, i) => ({
+    return byDow;
+}
+
+function updateDowChart(dowChart, points, bonusPoints) {
+    dowChart.series[0].setData(countByDow(points).map((v, i) => ({
         y: v,
         color: activeDowFilter.size === 0 || activeDowFilter.has(i) ? '#90ed7d' : 'rgba(144,237,125,0.3)',
+    })), false);
+    dowChart.series[1].setData(countByDow(bonusPoints).map((v, i) => ({
+        y: v,
+        color: activeDowFilter.size === 0 || activeDowFilter.has(i) ? BONUS_COLOR : BONUS_COLOR_DIM,
     })), true);
 }
 
-function updateHourlyChart(hourlyChart, points) {
+function countByHour(points) {
     const byHour = Array(24).fill(0);
     points.forEach(p => {
         byHour[parseInt(p.givenDateTime.substring(11, 13))]++;
     });
-    hourlyChart.yAxis[0].setExtremes(0, Math.max(...byHour), true, false, { endOnTick: false });
+    return byHour;
+}
+
+function updateHourlyChart(hourlyChart, points, bonusPoints) {
+    const byHour = countByHour(points);
+    const byBonusHour = countByHour(bonusPoints);
+    hourlyChart.yAxis[0].setExtremes(0, Math.max(...byHour.map((v, i) => v + byBonusHour[i])), true, false, { endOnTick: false });
     hourlyChart.series[0].setData(byHour.map((v, i) => ({
         y: v,
         color: activeHourFilter.size === 0 || activeHourFilter.has(i) ? '#ffd700' : 'rgba(255,215,0,0.3)',
+    })), false);
+    hourlyChart.series[1].setData(byBonusHour.map((v, i) => ({
+        y: v,
+        color: activeHourFilter.size === 0 || activeHourFilter.has(i) ? BONUS_COLOR : BONUS_COLOR_DIM,
     })), true);
 }
 
-function updateReceiversChart(receiversChart, points) {
+function countByUser(points, field) {
     const counts = {};
     points.forEach(p => {
-        if (p.givenTo) counts[p.givenTo] = (counts[p.givenTo] || 0) + 1;
+        if (p[field]) counts[p[field]] = (counts[p[field]] || 0) + 1;
     });
-    const top = topN(counts, 20);
-    receiversChart.xAxis[0].setCategories(top.map(([k]) => k));
-    receiversChart.series[0].setData(top.map(([k, v]) => ({
-        y: v,
-        color: activeReceiverFilter.size === 0 || activeReceiverFilter.has(k) ? '#f7a35c' : 'rgba(247,163,92,0.3)',
-    })), true);
-    receiversChart.setSize(null, top.length * 20 + 100);
+    return counts;
 }
 
-function updateGiversChart(giversChart, points) {
-    const counts = {};
-    points.forEach(p => {
-        if (p.givenBy) counts[p.givenBy] = (counts[p.givenBy] || 0) + 1;
-    });
-    const top = topN(counts, 20);
-    giversChart.xAxis[0].setCategories(top.map(([k]) => k));
-    giversChart.series[0].setData(top.map(([k, v]) => ({
-        y: v,
-        color: activeGiverFilter.size === 0 || activeGiverFilter.has(k) ? '#8085e9' : 'rgba(128,133,233,0.3)',
+function updateUserChart(chart, points, bonusPoints, field, activeFilter, color, dimColor) {
+    const counts = countByUser(points, field);
+    const bonusCounts = countByUser(bonusPoints, field);
+    const combined = { ...counts };
+    Object.entries(bonusCounts).forEach(([k, v]) => { combined[k] = (combined[k] || 0) + v; });
+    const top = topN(combined, 20);
+    chart.xAxis[0].setCategories(top.map(([k]) => k));
+    chart.series[0].setData(top.map(([k]) => ({
+        y: counts[k] || 0,
+        color: activeFilter.size === 0 || activeFilter.has(k) ? color : dimColor,
+    })), false);
+    chart.series[1].setData(top.map(([k]) => ({
+        y: bonusCounts[k] || 0,
+        color: activeFilter.size === 0 || activeFilter.has(k) ? BONUS_COLOR : BONUS_COLOR_DIM,
     })), true);
-    giversChart.setSize(null, top.length * 20 + 100);
+    chart.setSize(null, top.length * 20 + 130);
 }
 
-function refreshSecondaryCharts(timeFiltered, dowChart, hourlyChart, receiversChart, giversChart) {
-    updateDowChart(dowChart, applyFilters(timeFiltered, { excludeDow: true }));
-    updateHourlyChart(hourlyChart, applyFilters(timeFiltered, { excludeHour: true }));
-    updateReceiversChart(receiversChart, applyFilters(timeFiltered, { excludeReceiver: true }));
-    updateGiversChart(giversChart, applyFilters(timeFiltered, { excludeGiver: true }));
+function updateReceiversChart(receiversChart, points, bonusPoints) {
+    updateUserChart(receiversChart, points, bonusPoints, 'givenTo', activeReceiverFilter, '#f7a35c', 'rgba(247,163,92,0.3)');
+}
+
+function updateGiversChart(giversChart, points, bonusPoints) {
+    updateUserChart(giversChart, points, bonusPoints, 'givenBy', activeGiverFilter, '#8085e9', 'rgba(128,133,233,0.3)');
+}
+
+function refreshSecondaryCharts(timeFiltered, bonusTimeFiltered, dowChart, hourlyChart, receiversChart, giversChart) {
+    updateDowChart(dowChart, applyFilters(timeFiltered, { excludeDow: true }), applyFilters(bonusTimeFiltered, { excludeDow: true }));
+    updateHourlyChart(hourlyChart, applyFilters(timeFiltered, { excludeHour: true }), applyFilters(bonusTimeFiltered, { excludeHour: true }));
+    updateReceiversChart(receiversChart, applyFilters(timeFiltered, { excludeReceiver: true }), applyFilters(bonusTimeFiltered, { excludeReceiver: true }));
+    updateGiversChart(giversChart, applyFilters(timeFiltered, { excludeGiver: true }), applyFilters(bonusTimeFiltered, { excludeGiver: true }));
 }
 
 function computeStats(allPoints) {
@@ -223,6 +250,8 @@ function computeStats(allPoints) {
 
 function renderCharts(data) {
     const allPoints = data.points.filter(p => p.givenDateTime);
+    // || [] tolerates JSON generated before bonus points were exported
+    const allBonusPoints = (data.bonusPoints || []).filter(p => p.givenDateTime);
 
     const stats = computeStats(allPoints);
     const tbody = document.querySelector('#stats-table tbody');
@@ -235,15 +264,21 @@ function renderCharts(data) {
     const discussionName = DISCUSSION_NAMES[String(data.discussionId)] || `Diskuze ${data.discussionId}`;
     document.title = `Statistiky bodů — ${discussionName}`;
     document.querySelector('h1').textContent = `Statistiky bodů — ${discussionName}`;
+    const bonusSuffix = allBonusPoints.length > 0 ? ` + ${allBonusPoints.length} bonusů` : '';
     document.getElementById('status').textContent =
-        `${allPoints.length} bodů — vygenerováno ${data.generatedAt}`;
+        `${allPoints.length} bodů${bonusSuffix} — vygenerováno ${data.generatedAt}`;
 
-    function getTimeFiltered() {
+    function getTimeFiltered(points) {
         const { min, max } = stockChart.xAxis[0].getExtremes();
-        return allPoints.filter(p => {
+        return points.filter(p => {
             const t = new Date(p.givenDateTime.substring(0, 10)).getTime();
             return t >= min && t <= max;
         });
+    }
+
+    // With no bonus points at all, keep the bonus line empty instead of drawing a flat zero line
+    function bonusTimeseriesData(bonusPoints) {
+        return allBonusPoints.length > 0 ? buildTimeseriesData(bonusPoints, allPoints) : [];
     }
 
     function updateFilterBar() {
@@ -293,17 +328,18 @@ function renderCharts(data) {
 
     function onFilterChange() {
         updateFilterBar();
-        const timeFiltered = getTimeFiltered();
-        refreshSecondaryCharts(timeFiltered, dowChart, hourlyChart, receiversChart, giversChart);
-        stockChart.series[0].setData(buildTimeseriesData(applyFilters(allPoints), allPoints), true);
+        refreshSecondaryCharts(getTimeFiltered(allPoints), getTimeFiltered(allBonusPoints), dowChart, hourlyChart, receiversChart, giversChart);
+        stockChart.series[0].setData(buildTimeseriesData(applyFilters(allPoints), allPoints), false);
+        stockChart.series[1].setData(bonusTimeseriesData(applyFilters(allBonusPoints)), true);
     }
 
     const dowChart = Highcharts.chart('chart-dayofweek', {
         title: { text: 'Body podle dne v týdnu' },
         xAxis: { categories: DAY_NAMES },
-        yAxis: { title: { text: 'Celkem bodů' }, min: 0 },
+        yAxis: { title: { text: 'Celkem bodů' }, min: 0, reversedStacks: false },
         plotOptions: {
             series: {
+                stacking: 'normal',
                 cursor: 'pointer',
                 point: {
                     events: {
@@ -316,8 +352,10 @@ function renderCharts(data) {
                 },
             },
         },
-        series: [{ name: 'Body', data: [0, 0, 0, 0, 0, 0, 0], type: 'column', color: '#90ed7d' }],
-        legend: { enabled: false },
+        series: [
+            { name: 'Body', data: [0, 0, 0, 0, 0, 0, 0], type: 'column', color: '#90ed7d' },
+            { name: 'Bonusy', data: [0, 0, 0, 0, 0, 0, 0], type: 'column', color: BONUS_COLOR },
+        ],
         credits: { enabled: false },
     });
 
@@ -329,9 +367,10 @@ function renderCharts(data) {
                          '12','13','14','15','16','17','18','19','20','21','22','23'],
             tickmarkPlacement: 'on',
         },
-        yAxis: { min: 0, max: 1, endOnTick: false, maxPadding: 0, gridLineInterpolation: 'polygon', title: { text: '' }, labels: { enabled: false } },
+        yAxis: { min: 0, max: 1, endOnTick: false, maxPadding: 0, gridLineInterpolation: 'polygon', title: { text: '' }, labels: { enabled: false }, reversedStacks: false },
         plotOptions: {
             series: {
+                stacking: 'normal',
                 cursor: 'pointer',
                 point: {
                     events: {
@@ -351,17 +390,24 @@ function renderCharts(data) {
             color: '#ffd700',
             pointPadding: 0,
             groupPadding: 0,
+        }, {
+            name: 'Bonusy',
+            data: Array(24).fill(0),
+            type: 'column',
+            color: BONUS_COLOR,
+            pointPadding: 0,
+            groupPadding: 0,
         }],
-        legend: { enabled: false },
         credits: { enabled: false },
     });
 
     const receiversChart = Highcharts.chart('chart-top-receivers', {
         title: { text: 'Obdržené body' },
         xAxis: { categories: [], labels: { rotation: 0 } },
-        yAxis: { title: { text: 'Přijatých bodů' }, min: 0 },
+        yAxis: { title: { text: 'Přijatých bodů' }, min: 0, reversedStacks: false },
         plotOptions: {
             series: {
+                stacking: 'normal',
                 cursor: 'pointer',
                 point: {
                     events: {
@@ -375,17 +421,20 @@ function renderCharts(data) {
                 },
             },
         },
-        series: [{ name: 'Přijato', data: [], type: 'bar', color: '#f7a35c' }],
-        legend: { enabled: false },
+        series: [
+            { name: 'Body', data: [], type: 'bar', color: '#f7a35c' },
+            { name: 'Bonusy', data: [], type: 'bar', color: BONUS_COLOR },
+        ],
         credits: { enabled: false },
     });
 
     const giversChart = Highcharts.chart('chart-top-givers', {
         title: { text: 'Udělené body' },
         xAxis: { categories: [], labels: { rotation: 0 } },
-        yAxis: { title: { text: 'Udělených bodů' }, min: 0 },
+        yAxis: { title: { text: 'Udělených bodů' }, min: 0, reversedStacks: false },
         plotOptions: {
             series: {
+                stacking: 'normal',
                 cursor: 'pointer',
                 point: {
                     events: {
@@ -399,12 +448,14 @@ function renderCharts(data) {
                 },
             },
         },
-        series: [{ name: 'Uděleno', data: [], type: 'bar', color: '#8085e9' }],
-        legend: { enabled: false },
+        series: [
+            { name: 'Body', data: [], type: 'bar', color: '#8085e9' },
+            { name: 'Bonusy', data: [], type: 'bar', color: BONUS_COLOR },
+        ],
         credits: { enabled: false },
     });
 
-    refreshSecondaryCharts(allPoints, dowChart, hourlyChart, receiversChart, giversChart);
+    refreshSecondaryCharts(allPoints, allBonusPoints, dowChart, hourlyChart, receiversChart, giversChart);
 
     const autoDataGrouping = {
         enabled: true, forced: false, approximation: 'sum', groupPixelWidth: 10,
@@ -421,11 +472,12 @@ function renderCharts(data) {
             '1m': ['month', [1]]
         };
         const unit = units[type];
-        stockChart.series[0].update({
-            dataGrouping: unit
-                ? { enabled: true, forced: true, approximation: 'sum', units: [unit] }
-                : autoDataGrouping
-        }, true);
+        const dataGrouping = unit
+            ? { enabled: true, forced: true, approximation: 'sum', units: [unit] }
+            : autoDataGrouping;
+        // Only the two data series; stockChart.series also contains the navigator series
+        stockChart.series.slice(0, 2).forEach(s => s.update({ dataGrouping }, false));
+        stockChart.redraw();
     }
 
     const stockChart = Highcharts.stockChart('chart-timeseries', {
@@ -445,11 +497,11 @@ function renderCharts(data) {
             type: 'datetime',
             events: {
                 afterSetExtremes: function (e) {
-                    const timeFiltered = allPoints.filter(p => {
+                    const inRange = p => {
                         const t = new Date(p.givenDateTime.substring(0, 10)).getTime();
                         return t >= e.min && t <= e.max;
-                    });
-                    refreshSecondaryCharts(timeFiltered, dowChart, hourlyChart, receiversChart, giversChart);
+                    };
+                    refreshSecondaryCharts(allPoints.filter(inRange), allBonusPoints.filter(inRange), dowChart, hourlyChart, receiversChart, giversChart);
                 },
             },
         },
@@ -461,8 +513,14 @@ function renderCharts(data) {
             type: 'line',
             color: '#7cb5ec',
             dataGrouping: autoDataGrouping
+        }, {
+            name: 'Bonusy',
+            data: bonusTimeseriesData(allBonusPoints),
+            type: 'line',
+            color: BONUS_COLOR,
+            dataGrouping: autoDataGrouping
         }],
-        legend: { enabled: false },
+        legend: { enabled: true },
         credits: { enabled: false },
     });
 

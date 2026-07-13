@@ -30,6 +30,7 @@ data class DiscussionData(
     val discussionId: Long,
     val generatedAt: String,
     val points: List<Point>,
+    val bonusPoints: List<Point> = emptyList(),
 )
 
 fun fromAttributeValues(input: Map<String, AttributeValue>): Point {
@@ -162,27 +163,8 @@ object Points : PointsStorage {
         }
     }
 
-    internal fun getPointsFrom(discussionId: Long, from: LocalDateTime): List<Point> {
-        log.info("Getting all points for discussion $discussionId from $from")
-
-        val request = QueryRequest
-            .builder()
-            .tableName(TABLE_NAME)
-            .keyConditionExpression("discussionId = :discussionId")
-            .filterExpression("givenDateTime >= :from")
-            .expressionAttributeValues(
-                mapOf(
-                    ":discussionId" to AttributeValue.builder().n(discussionId.toString()).build(),
-                    ":from" to AttributeValue.builder().s(from.toString()).build(),
-                ),
-            ).build()
-
-        return client
-            .queryPaginator(request)
-            .items()
-            ?.let { item -> item.map { fromAttributeValues(it) } }
-            ?.toList() ?: emptyList()
-    }
+    internal fun getPointsFrom(discussionId: Long, from: LocalDateTime): List<Point> =
+        client.queryPointsFrom(TABLE_NAME, discussionId, from)
 
     override fun getPointsBetween(
         discussionId: Long,

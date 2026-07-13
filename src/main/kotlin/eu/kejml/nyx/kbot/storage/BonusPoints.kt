@@ -62,6 +62,9 @@ object BonusPoints : PointsStorage {
         }
     }
 
+    internal fun getPointsFrom(discussionId: Long, from: LocalDateTime): List<Point> =
+        client.queryPointsFrom(BONUS_TABLE_NAME, discussionId, from)
+
     override fun getPointsBetween(
         discussionId: Long,
         from: LocalDateTime,

@@ -2,6 +2,7 @@ package eu.kejml.nyx.kbot.lambda
 
 import com.amazonaws.services.lambda.runtime.Context
 import com.amazonaws.services.lambda.runtime.RequestHandler
+import eu.kejml.nyx.kbot.storage.BonusPoints
 import eu.kejml.nyx.kbot.storage.DiscussionData
 import eu.kejml.nyx.kbot.storage.Points
 import kotlinx.datetime.Clock
@@ -38,12 +39,15 @@ class WebsiteDataGeneratorHandler : RequestHandler<Any?, String> {
     ): String {
         context.logger.log("Generating website data for discussion $discussionId")
 
-        val points = Points.getPointsFrom(discussionId, LocalDateTime(2022, 1, 1, 0, 0))
+        val dataFrom = LocalDateTime(2022, 1, 1, 0, 0)
+        val points = Points.getPointsFrom(discussionId, dataFrom)
+        val bonusPoints = BonusPoints.getPointsFrom(discussionId, dataFrom)
 
         val data = DiscussionData(
             discussionId = discussionId,
             generatedAt = Clock.System.now().toString(),
             points = points,
+            bonusPoints = bonusPoints,
         )
 
         val json = Json.encodeToString(data)
@@ -56,8 +60,8 @@ class WebsiteDataGeneratorHandler : RequestHandler<Any?, String> {
             .build()
 
         s3Client.putObject(request, RequestBody.fromString(json))
-        context.logger.log("Uploaded $key to bucket $bucketName (${points.size} points)")
+        context.logger.log("Uploaded $key to bucket $bucketName (${points.size} points, ${bonusPoints.size} bonus points)")
 
-        return "Generated data for ${points.size} points"
+        return "Generated data for ${points.size} points and ${bonusPoints.size} bonus points"
     }
 }
