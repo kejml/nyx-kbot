@@ -175,7 +175,7 @@ fun List<Point>.validatePointsAndRemoveInvalid(
                     id = point.discussionId,
                     params = DiscussionQueryParams(fromId = point.postId + 1, discussionOrder = DiscussionOrder.OLDER_THAN),
                 ).posts
-            val result = posts.first().id == point.postId
+            val result = posts.firstOrNull()?.id == point.postId
             if (!result) {
                 log.info("Removing point $point - not found in the discussion anymore. (Found only posts with ids: ${posts.map { it.id }}")
                 storage.removePoint(point)
