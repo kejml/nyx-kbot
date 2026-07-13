@@ -123,7 +123,7 @@ private suspend fun processPosts(
                         Point(discussionId, post.id, it.givenTo, post.insertedAt, it.questionId, post.username)
                     }.toList()
             } catch (ex: Exception) {
-                log.warn("Could not parse content:\n ${post.content}")
+                log.warn("Could not parse content:\n ${post.content}", ex)
                 emptyList()
             }
         }
