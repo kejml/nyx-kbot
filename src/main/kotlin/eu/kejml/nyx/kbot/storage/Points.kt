@@ -12,8 +12,11 @@ import software.amazon.awssdk.services.dynamodb.model.GetItemRequest
 import software.amazon.awssdk.services.dynamodb.model.PutItemRequest
 import software.amazon.awssdk.services.dynamodb.model.QueryRequest
 import software.amazon.awssdk.services.dynamodb.model.ResourceNotFoundException
+import java.lang.invoke.MethodHandles
 
 const val TABLE_NAME = "points"
+
+private val log = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass())
 
 @Serializable
 data class Point(
@@ -34,7 +37,7 @@ data class DiscussionData(
 )
 
 fun fromAttributeValues(input: Map<String, AttributeValue>): Point {
-    println(input)
+    log.debug(input.toString())
     return Point(
         discussionId = input["discussionId"]?.n()?.toLong() ?: throw IllegalArgumentException("Missing attribute discussionId"),
         postId = input["postId"]?.n()?.toLong() ?: throw IllegalArgumentException("Missing attribute id"),
