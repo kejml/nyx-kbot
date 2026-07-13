@@ -143,26 +143,6 @@ object Points : PointsStorage {
         }
     }
 
-    internal fun getAPoint(id: Long): Point? {
-        val keyToGet = HashMap<String, AttributeValue>()
-
-        keyToGet["postId"] = AttributeValue.builder().n(id.toString()).build()
-
-        val request = GetItemRequest
-            .builder()
-            .key(keyToGet)
-            .tableName(TABLE_NAME)
-            .build()
-
-        val returnedItem: Map<String, AttributeValue>? = client.getItem(request).item()
-        return if (returnedItem != null && returnedItem.isNotEmpty()) {
-            fromAttributeValues(returnedItem)
-        } else {
-            System.out.format("No item found with the key %s!\n", id.toString())
-            null
-        }
-    }
-
     internal fun getPointsFrom(discussionId: Long, from: LocalDateTime): List<Point> =
         client.queryPointsFrom(TABLE_NAME, discussionId, from)
 
