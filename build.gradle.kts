@@ -29,7 +29,7 @@ dependencies {
 
     // Serialization
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.9.0")
-    implementation("org.jetbrains.kotlinx:kotlinx-datetime:0.5.0")
+    implementation("org.jetbrains.kotlinx:kotlinx-datetime:0.8.0")
 
     // AWS SDK
     implementation(platform("software.amazon.awssdk:bom:$awsSdkVersion"))

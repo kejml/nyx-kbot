@@ -5,9 +5,9 @@ import io.ktor.client.call.*
 import io.ktor.client.request.*
 import io.ktor.http.*
 import kotlinx.coroutines.runBlocking
-import kotlinx.datetime.Clock
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
+import kotlin.time.Clock
 import kotlin.time.Duration.Companion.days
 
 suspend fun main() {

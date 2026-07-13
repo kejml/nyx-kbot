@@ -9,7 +9,9 @@ import kotlinx.coroutines.runBlocking
 import kotlinx.datetime.LocalDateTime
 import kotlinx.datetime.Month
 import kotlinx.datetime.TimeZone
+import kotlinx.datetime.number
 import kotlinx.datetime.toInstant
+import kotlinx.datetime.toJavaMonth
 import kotlinx.datetime.toLocalDateTime
 import org.slf4j.LoggerFactory
 import java.time.format.TextStyle
@@ -218,10 +220,10 @@ fun postMonthlySummary(
 ) {
     if (month == Month.DECEMBER) throw IllegalArgumentException("Send year summary in December!")
 
-    val monthString = month.getDisplayName(TextStyle.FULL_STANDALONE, Locale.forLanguageTag("cs"))
+    val monthString = month.toJavaMonth().getDisplayName(TextStyle.FULL_STANDALONE, Locale.forLanguageTag("cs"))
 
     val monthStart = LocalDateTime(year, month, 1, 0, 0)
-    val monthEnd = LocalDateTime(year, month + 1, 1, 0, 0)
+    val monthEnd = LocalDateTime(year, Month(month.number + 1), 1, 0, 0)
         .toInstant(TimeZone.UTC)
         .minus(1.seconds)
         .toLocalDateTime(TimeZone.UTC)

@@ -5,7 +5,6 @@ import com.amazonaws.services.lambda.runtime.RequestHandler
 import eu.kejml.nyx.kbot.storage.BonusPoints
 import eu.kejml.nyx.kbot.storage.DiscussionData
 import eu.kejml.nyx.kbot.storage.Points
-import kotlinx.datetime.Clock
 import kotlinx.datetime.LocalDateTime
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
@@ -16,6 +15,7 @@ import software.amazon.awssdk.regions.Region
 import software.amazon.awssdk.services.s3.S3Client
 import software.amazon.awssdk.services.s3.model.PutObjectRequest
 import java.net.URI
+import kotlin.time.Clock
 
 class WebsiteDataGeneratorHandler : RequestHandler<Any?, String> {
     private val discussionId = System.getenv("DISCUSSION_ID").toLong()

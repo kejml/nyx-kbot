@@ -11,9 +11,9 @@ import eu.kejml.nyx.kbot.storage.readPointsFromDiscussion
 import eu.kejml.nyx.kbot.storage.updateHome
 import eu.kejml.nyx.kbot.storage.updateHomeHallOfFame
 import eu.kejml.nyx.kbot.support.nyxTest
-import kotlinx.datetime.Clock
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
+import kotlin.time.Clock
 import kotlin.time.Duration.Companion.days
 
 class HourlyUpdateHandler : RequestHandler<Any?, String> {
